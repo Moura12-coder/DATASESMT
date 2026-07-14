@@ -1,0 +1,97 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1778874688273,
+      "tag": "0000_omniscient_franklin_richards",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1778874879109,
+      "tag": "0001_ambitious_aqueduct",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1778881608587,
+      "tag": "0002_hard_jocasta",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1778952158144,
+      "tag": "0003_premium_dazzler",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1779030763624,
+      "tag": "0004_icy_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1779031061998,
+      "tag": "0005_silky_wendell_vaughn",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1779221977250,
+      "tag": "0006_quick_nitro",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1779377487380,
+      "tag": "0007_left_shocker",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1779739347822,
+      "tag": "0008_dark_bromley",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1779827034406,
+      "tag": "0009_colorful_paper_doll",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1782418304380,
+      "tag": "0010_parallel_mentor",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1782419256691,
+      "tag": "0011_eager_medusa",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1782742120540,
+      "tag": "0012_bent_zombie",
+      "breakpoints": true
+    }
+  ]
+}
