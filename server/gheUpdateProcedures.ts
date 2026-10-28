@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure } from "./phase1Routers";
+import { protectedProcedure } from "./_core/trpc";
 import { updateGHE, getGHEById, getGHEStats } from "./gheUpdate";
 
 /**

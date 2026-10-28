@@ -1,6 +1,11 @@
-import { getDb, getEsocialS2230, createEsocialS2230, updateEsocialS2230 } from './db';
-import { leaveOfAbsence, employees } from '../drizzle/schema';
-import { eq } from 'drizzle-orm';
+import {
+  getDb,
+  getEsocialS2230,
+  createEsocialS2230,
+  updateEsocialS2230,
+} from "./db";
+import { leaveOfAbsence, employees } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Interface para evento S-2230 (Afastamento Temporário)
@@ -21,11 +26,11 @@ export interface S2230Event {
  * Mapeamento de tipos de afastamento para códigos eSocial
  */
 const AFASTAMENTO_CODES: Record<string, string> = {
-  'Acidente Trabalho': '01',
-  'Doença Ocupacional': '02',
-  'Doença Comum': '03',
-  'Maternidade': '04',
-  'Outro': '99',
+  "Acidente Trabalho": "01",
+  "Doença Ocupacional": "02",
+  "Doença Comum": "03",
+  Maternidade: "04",
+  Outro: "99",
 };
 
 /**
@@ -46,9 +51,11 @@ export function buildS2230Event(
     unitId,
     employeeId,
     absenceId,
-    dtIniAfastamento: absence.startDate.toISOString().split('T')[0],
-    dtFimAfastamento: absence.endDate ? absence.endDate.toISOString().split('T')[0] : undefined,
-    codMotAfast: AFASTAMENTO_CODES[absence.type] || '99',
+    dtIniAfastamento: absence.startDate.toISOString().split("T")[0],
+    dtFimAfastamento: absence.endDate
+      ? absence.endDate.toISOString().split("T")[0]
+      : undefined,
+    codMotAfast: AFASTAMENTO_CODES[absence.type] || "99",
     dscMotAfast: absence.type,
     codCID: absence.cid,
   };
@@ -77,9 +84,9 @@ export function formatS2230ToXml(event: S2230Event): string {
     </ideVinculo>
     <infoAfastamento>
       <dtIniAfastamento>${event.dtIniAfastamento}</dtIniAfastamento>
-      ${event.dtFimAfastamento ? `<dtFimAfastamento>${event.dtFimAfastamento}</dtFimAfastamento>` : ''}
+      ${event.dtFimAfastamento ? `<dtFimAfastamento>${event.dtFimAfastamento}</dtFimAfastamento>` : ""}
       <codMotAfast>${event.codMotAfast}</codMotAfast>
-      ${event.codCID ? `<codCID>${event.codCID}</codCID>` : ''}
+      ${event.codCID ? `<codCID>${event.codCID}</codCID>` : ""}
     </infoAfastamento>
   </evtAfastTemp>
 </eSocial>`;
@@ -97,33 +104,24 @@ export async function sendToESocial(event: S2230Event): Promise<{
   try {
     // Validações básicas
     if (!event.dtIniAfastamento) {
-      throw new Error('Data de início do afastamento é obrigatória');
+      throw new Error("Data de início do afastamento é obrigatória");
     }
 
     if (!event.codMotAfast) {
-      throw new Error('Código do motivo do afastamento é obrigatório');
+      throw new Error("Código do motivo do afastamento é obrigatório");
     }
 
-    // Simula chamada à API do eSocial
-    // Em produção, seria:
-    // const response = await fetch('https://api.esocial.gov.br/v1/events', {
-    //   method: 'POST',
-    //   headers: { 'Authorization': `Bearer ${token}` },
-    //   body: formatS2230ToXml(event)
-    // });
-
-    // Para fins de demonstração, retornamos sucesso com protocolo simulado
-    const protocolNumber = `${Date.now()}-${Math.random().toString(36).substring(7)}`.toUpperCase();
-
     return {
-      success: true,
-      protocolNumber,
+      success: false,
+      errorMessage:
+        "Integração eSocial não habilitada. Nenhum evento foi transmitido.",
       timestamp: new Date(),
     };
   } catch (error) {
     return {
       success: false,
-      errorMessage: error instanceof Error ? error.message : 'Erro desconhecido',
+      errorMessage:
+        error instanceof Error ? error.message : "Erro desconhecido",
       timestamp: new Date(),
     };
   }
@@ -139,14 +137,14 @@ export async function recordS2230Submission(
   response: Awaited<ReturnType<typeof sendToESocial>>
 ): Promise<void> {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
+  if (!db) throw new Error("Database not available");
 
   await createEsocialS2230({
     unitId,
     employeeId,
     absenceId,
-    eventType: 'S-2230',
-    status: response.success ? 'Enviado' : 'Rejeitado',
+    eventType: "S-2230",
+    status: response.success ? "Enviado" : "Rejeitado",
     esocialResponse: response as any,
     sentAt: new Date(),
   });
@@ -165,16 +163,18 @@ export async function processAbsenceAndSendToESocial(
   errorMessage?: string;
 }> {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
+  if (!db) throw new Error("Database not available");
 
   try {
     // Busca dados do afastamento
-    const absence = await db.select().from(leaveOfAbsence)
+    const absence = await db
+      .select()
+      .from(leaveOfAbsence)
       .where(eq(leaveOfAbsence.id, absenceId))
       .limit(1);
 
     if (absence.length === 0) {
-      throw new Error('Afastamento não encontrado');
+      throw new Error("Afastamento não encontrado");
     }
 
     const absenceData = absence[0];
@@ -201,7 +201,8 @@ export async function processAbsenceAndSendToESocial(
   } catch (error) {
     return {
       success: false,
-      errorMessage: error instanceof Error ? error.message : 'Erro desconhecido',
+      errorMessage:
+        error instanceof Error ? error.message : "Erro desconhecido",
     };
   }
 }
@@ -213,24 +214,28 @@ export async function checkS2230Status(
   unitId: number,
   absenceId: number
 ): Promise<{
-  status: 'Rascunho' | 'Enviado' | 'Processado' | 'Rejeitado';
+  status: "Rascunho" | "Enviado" | "Processado" | "Rejeitado";
   protocolNumber?: string;
   sentAt?: Date;
   processedAt?: Date;
   response?: any;
 }> {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
+  if (!db) throw new Error("Database not available");
 
   const records = await getEsocialS2230(unitId);
   const record = records.find(r => r.absenceId === absenceId);
 
   if (!record) {
-    return { status: 'Rascunho' };
+    return { status: "Rascunho" };
   }
 
   return {
-    status: (record.status || 'Rascunho') as 'Rascunho' | 'Enviado' | 'Processado' | 'Rejeitado',
+    status: (record.status || "Rascunho") as
+      | "Rascunho"
+      | "Enviado"
+      | "Processado"
+      | "Rejeitado",
     protocolNumber: (record.esocialResponse as any)?.protocolNumber,
     sentAt: record.sentAt || undefined,
     processedAt: record.processedAt || undefined,
@@ -241,24 +246,29 @@ export async function checkS2230Status(
 /**
  * Gera relatório de conformidade eSocial
  */
-export async function generateESocialComplianceReport(unitId: number): Promise<string> {
+export async function generateESocialComplianceReport(
+  unitId: number
+): Promise<string> {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
+  if (!db) throw new Error("Database not available");
 
   const records = await getEsocialS2230(unitId);
 
   const totalEvents = records.length;
-  const sentEvents = records.filter(r => r.status === 'Enviado').length;
-  const processedEvents = records.filter(r => r.status === 'Processado').length;
-  const rejectedEvents = records.filter(r => r.status === 'Rejeitado').length;
-  const draftEvents = records.filter(r => r.status === 'Rascunho').length;
+  const sentEvents = records.filter(r => r.status === "Enviado").length;
+  const processedEvents = records.filter(r => r.status === "Processado").length;
+  const rejectedEvents = records.filter(r => r.status === "Rejeitado").length;
+  const draftEvents = records.filter(r => r.status === "Rascunho").length;
 
-  const complianceRate = totalEvents > 0 ? Math.round(((sentEvents + processedEvents) / totalEvents) * 100) : 0;
+  const complianceRate =
+    totalEvents > 0
+      ? Math.round(((sentEvents + processedEvents) / totalEvents) * 100)
+      : 0;
 
   return `
 RELATÓRIO DE CONFORMIDADE eSocial - S-2230
 Unidade: ${unitId}
-Data de Geração: ${new Date().toLocaleDateString('pt-BR')}
+Data de Geração: ${new Date().toLocaleDateString("pt-BR")}
 
 RESUMO:
 - Total de Eventos: ${totalEvents}
@@ -269,13 +279,18 @@ RESUMO:
 - Taxa de Conformidade: ${complianceRate}%
 
 DETALHES DOS EVENTOS:
-${records.slice(0, 10).map((r, idx) => `
+${records
+  .slice(0, 10)
+  .map(
+    (r, idx) => `
 ${idx + 1}. ID: ${r.id}
    Funcionário: ${r.employeeId}
    Status: ${r.status}
-   Enviado em: ${r.sentAt ? new Date(r.sentAt).toLocaleString('pt-BR') : 'Não enviado'}
-   Processado em: ${r.processedAt ? new Date(r.processedAt).toLocaleString('pt-BR') : 'Não processado'}
-`).join('\n')}
+   Enviado em: ${r.sentAt ? new Date(r.sentAt).toLocaleString("pt-BR") : "Não enviado"}
+   Processado em: ${r.processedAt ? new Date(r.processedAt).toLocaleString("pt-BR") : "Não processado"}
+`
+  )
+  .join("\n")}
 
 RECOMENDAÇÕES:
 1. Revisar eventos rejeitados e corrigir dados

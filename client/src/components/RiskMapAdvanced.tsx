@@ -1,12 +1,12 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Input } from './ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Badge } from './ui/badge';
-import { toast } from 'sonner';
-import { Edit2, Save, X, RotateCcw, Clock, AlertCircle } from 'lucide-react';
-import { trpc } from '@/lib/trpc';
+import React, { useRef, useState, useEffect } from "react";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "./ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Badge } from "./ui/badge";
+import { toast } from "sonner";
+import { Edit2, Save, X, RotateCcw, Clock, AlertCircle } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 interface RiskMapAreaWithHistory {
   id: number;
@@ -30,54 +30,60 @@ interface HistoryEntry {
 
 export function RiskMapAdvanced({ unitId }: { unitId: number }) {
   const [areas, setAreas] = useState<RiskMapAreaWithHistory[]>([]);
-  const [editingArea, setEditingArea] = useState<RiskMapAreaWithHistory | null>(null);
-  const [editingName, setEditingName] = useState('');
+  const [editingArea, setEditingArea] = useState<RiskMapAreaWithHistory | null>(
+    null
+  );
+  const [editingName, setEditingName] = useState("");
   const [draggedArea, setDraggedArea] = useState<number | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [selectedAreaForHistory, setSelectedAreaForHistory] = useState<number | null>(null);
+  const [selectedAreaForHistory, setSelectedAreaForHistory] = useState<
+    number | null
+  >(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Fetch areas
-  const { data: areasData = [] } = trpc.riskMap.listAreasWithCircles.useQuery(
-    { unitId },
-    { refetchInterval: 5000 }
-  );
+  const { data: areasData, refetch } =
+    trpc.riskMap.listAreasWithCircles.useQuery(
+      { unitId },
+      { refetchInterval: 5000 }
+    );
 
   // Mutations
-  const updatePositionMutation = trpc.riskMap.updatePositionWithHistory.useMutation({
-    onSuccess: () => {
-      toast.success('Posição atualizada');
-    },
-    onError: (error) => {
-      toast.error(`Erro: ${error.message}`);
-    },
-  });
+  const updatePositionMutation =
+    trpc.riskMap.updatePositionWithHistory.useMutation({
+      onSuccess: () => {
+        toast.success("Posição atualizada");
+      },
+      onError: error => {
+        toast.error(`Erro: ${error.message}`);
+      },
+    });
 
   const updateNameMutation = trpc.riskMap.updateNameWithHistory.useMutation({
     onSuccess: () => {
-      toast.success('Nome atualizado');
+      toast.success("Nome atualizado");
       setEditingArea(null);
-      setEditingName('');
+      setEditingName("");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro: ${error.message}`);
     },
   });
 
   const getHistoryMutation = trpc.riskMap.getAreaChangeHistory.useQuery(
-    { areaId: selectedArea || 0 },
-    { enabled: false }
+    { areaId: selectedAreaForHistory || 0 },
+    { enabled: !!selectedAreaForHistory }
   );
 
   const rollbackMutation = trpc.riskMap.rollbackToVersion.useMutation({
     onSuccess: () => {
-      toast.success('Revertido para versão anterior');
+      toast.success("Revertido para versão anterior");
       setShowHistory(false);
       refetch();
     },
     onError: (error: any) => {
-      toast.error(`Erro ao reverter: ${error?.message || 'Erro desconhecido'}`);
+      toast.error(`Erro ao reverter: ${error?.message || "Erro desconhecido"}`);
     },
   });
 
@@ -89,12 +95,12 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
 
   const handleDragStart = (e: React.DragEvent, areaId: number) => {
     setDraggedArea(areaId);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -122,7 +128,7 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
 
   const handleSaveName = () => {
     if (!editingArea || !editingName.trim()) {
-      toast.error('Nome não pode estar vazio');
+      toast.error("Nome não pode estar vazio");
       return;
     }
 
@@ -132,18 +138,23 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
     });
   };
 
+  useEffect(() => {
+    setHistory(
+      (getHistoryMutation.data ?? []).map(entry => ({
+        ...entry,
+        description: `${entry.changeType}: ${entry.oldValue ?? ""} → ${entry.newValue ?? ""}`,
+      }))
+    );
+  }, [getHistoryMutation.data]);
+
   const handleViewHistory = async (areaId: number) => {
-    setSelectedArea(areaId);
-    const data = await getHistoryMutation.refetch();
-    if (data.data) {
-      setHistory(data.data as any);
-      setShowHistory(true);
-    }
+    setSelectedAreaForHistory(areaId);
+    setShowHistory(true);
   };
 
   const handleRollback = (versionId: number) => {
     if (!selectedAreaForHistory) return;
-    if (confirm('Tem certeza que deseja reverter para esta versão?')) {
+    if (confirm("Tem certeza que deseja reverter para esta versão?")) {
       rollbackMutation.mutate({
         areaId: selectedAreaForHistory,
         versionId,
@@ -157,7 +168,8 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
         <CardHeader>
           <CardTitle>Mapa de Riscos Avançado</CardTitle>
           <p className="text-sm text-gray-600 mt-2">
-            Arraste áreas para reorganizar, clique para editar nome, visualize histórico de mudanças
+            Arraste áreas para reorganizar, clique para editar nome, visualize
+            histórico de mudanças
           </p>
         </CardHeader>
         <CardContent>
@@ -170,38 +182,69 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: '0.5rem',
-              background: '#f9fafb',
+              border: "1px solid #e5e7eb",
+              borderRadius: "0.5rem",
+              background: "#f9fafb",
             }}
           >
             <defs>
-              <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-                <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#f0f0f0" strokeWidth="0.5" />
+              <pattern
+                id="grid"
+                width="50"
+                height="50"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 50 0 L 0 0 0 50"
+                  fill="none"
+                  stroke="#f0f0f0"
+                  strokeWidth="0.5"
+                />
               </pattern>
             </defs>
 
             <rect width="1200" height="600" fill="url(#grid)" />
 
-            {areas.map((area) => (
-        <g
-          key={area.id}
-          draggable
-          onDragStart={(e: React.DragEvent) => handleDragStart(e, area.id)}
-          style={{ cursor: isDragging === area.id ? 'grabbing' : 'grab' } as React.CSSProperties}
-        >
+            {areas.map(area => (
+              <g
+                key={area.id}
+                onPointerDown={e => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  setDraggedArea(area.id);
+                }}
+                onPointerUp={e => {
+                  if (draggedArea !== area.id || !svgRef.current) return;
+                  const matrix = svgRef.current.getScreenCTM();
+                  if (!matrix) return;
+                  const point = new DOMPoint(
+                    e.clientX,
+                    e.clientY
+                  ).matrixTransform(matrix.inverse());
+                  updatePositionMutation.mutate({
+                    areaId: area.id,
+                    x: Math.max(0, point.x - area.width / 2),
+                    y: Math.max(0, point.y - area.height / 2),
+                  });
+                  setDraggedArea(null);
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                }}
+                style={{
+                  cursor: draggedArea === area.id ? "grabbing" : "grab",
+                  touchAction: "none",
+                }}
+              >
                 <rect
                   x={area.x}
                   y={area.y}
                   width={area.width}
                   height={area.height}
-                  fill={draggedArea === area.id ? '#dbeafe' : '#ffffff'}
-                  stroke={draggedArea === area.id ? '#3b82f6' : '#9ca3af'}
-                  strokeWidth={draggedArea === area.id ? '3' : '2'}
+                  fill={draggedArea === area.id ? "#dbeafe" : "#ffffff"}
+                  stroke={draggedArea === area.id ? "#3b82f6" : "#9ca3af"}
+                  strokeWidth={draggedArea === area.id ? "3" : "2"}
                   rx="4"
                   style={{
                     opacity: draggedArea === area.id ? 0.8 : 1,
-                    transition: 'all 0.2s ease',
+                    transition: "all 0.2s ease",
                   }}
                 />
 
@@ -213,7 +256,7 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
                   fill="#1f2937"
                   pointerEvents="none"
                 >
-                  {editingArea?.id === area.id ? '✏️ Editando...' : area.name}
+                  {editingArea?.id === area.id ? "✏️ Editando..." : area.name}
                 </text>
 
                 <text
@@ -238,7 +281,7 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {areas.map((area) => (
+            {areas.map(area => (
               <div
                 key={area.id}
                 className="p-4 border rounded-lg flex items-center justify-between hover:bg-gray-50 transition"
@@ -248,7 +291,7 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
                     <div className="flex gap-2">
                       <Input
                         value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
+                        onChange={e => setEditingName(e.target.value)}
                         placeholder="Nome da área"
                         className="flex-1"
                       />
@@ -264,7 +307,7 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
                         variant="outline"
                         onClick={() => {
                           setEditingArea(null);
-                          setEditingName('');
+                          setEditingName("");
                         }}
                       >
                         <X className="w-4 h-4" />
@@ -315,9 +358,11 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {history.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Nenhuma mudança registrada</p>
+              <p className="text-gray-500 text-center py-4">
+                Nenhuma mudança registrada
+              </p>
             ) : (
-              history.map((entry) => (
+              history.map(entry => (
                 <div
                   key={entry.id}
                   className="p-3 border rounded-lg bg-gray-50 flex items-start justify-between"
@@ -325,7 +370,9 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-blue-500" />
-                      <p className="font-semibold text-sm">{entry.description}</p>
+                      <p className="font-semibold text-sm">
+                        {entry.description}
+                      </p>
                     </div>
                     <p className="text-xs text-gray-600 mt-1">
                       {new Date(entry.changedAt).toLocaleString()}
@@ -337,7 +384,7 @@ export function RiskMapAdvanced({ unitId }: { unitId: number }) {
                     )}
                   </div>
 
-                  {entry.changeType !== 'rollback' && (
+                  {entry.changeType !== "rollback" && (
                     <Button
                       size="sm"
                       variant="outline"

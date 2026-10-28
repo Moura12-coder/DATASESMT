@@ -22,6 +22,7 @@ export type SessionPayload = {
   openId: string;
   appId: string;
   name: string;
+  sessionVersion?: number;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -29,14 +30,7 @@ const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
 class OAuthService {
-  constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
-      );
-    }
-  }
+  constructor(private client: ReturnType<typeof axios.create>) {}
 
   private decodeState(state: string): string {
     const redirectUri = atob(state);
@@ -156,6 +150,8 @@ class SDKServer {
 
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
+    if (secret.length < 32)
+      throw new Error("JWT_SECRET must contain at least 32 characters");
     return new TextEncoder().encode(secret);
   }
 
@@ -168,11 +164,13 @@ class SDKServer {
     openId: string,
     options: { expiresInMs?: number; name?: string } = {}
   ): Promise<string> {
+    const user = await db.getUserByOpenId(openId);
     return this.signSession(
       {
         openId,
         appId: ENV.appId,
         name: options.name || "",
+        sessionVersion: user?.sessionVersion ?? 0,
       },
       options
     );
@@ -191,15 +189,19 @@ class SDKServer {
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
+      sessionVersion: payload.sessionVersion ?? 0,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
 
-  async verifySession(
-    cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
+  async verifySession(cookieValue: string | undefined | null): Promise<{
+    openId: string;
+    appId: string;
+    name: string;
+    sessionVersion: number;
+  } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -215,7 +217,8 @@ class SDKServer {
       if (
         !isNonEmptyString(openId) ||
         !isNonEmptyString(appId) ||
-        !isNonEmptyString(name)
+        typeof name !== "string" ||
+        appId !== ENV.appId
       ) {
         console.warn("[Auth] Session payload missing required fields");
         return null;
@@ -225,6 +228,10 @@ class SDKServer {
         openId,
         appId,
         name,
+        sessionVersion:
+          typeof payload.sessionVersion === "number"
+            ? payload.sessionVersion
+            : 0,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -279,28 +286,16 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
-        await db.upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
-    }
-
     if (!user) {
       throw ForbiddenError("User not found");
     }
 
+    if (
+      user.registrationStatus !== "approved" ||
+      user.sessionVersion !== session.sessionVersion
+    ) {
+      throw ForbiddenError("Session revoked or registration not approved");
+    }
     await db.upsertUser({
       openId: user.openId,
       lastSignedIn: signedInAt,

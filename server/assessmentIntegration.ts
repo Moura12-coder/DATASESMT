@@ -25,7 +25,10 @@ export async function getAssessmentsByUnit(unitId: number) {
 }
 
 // ─── GET ASSESSMENTS BY AGENT TYPE ───────────────────────────────────────────
-export async function getAssessmentsByAgentType(unitId: number, agentType: string) {
+export async function getAssessmentsByAgentType(
+  unitId: number,
+  agentType: string
+) {
   const db = await getDb();
   if (!db) throw new Error("Database connection failed");
 
@@ -35,7 +38,10 @@ export async function getAssessmentsByAgentType(unitId: number, agentType: strin
     .where(
       and(
         eq(environmentalAssessments.unitId, unitId),
-        eq(environmentalAssessments.agentType, agentType)
+        eq(
+          environmentalAssessments.agentType,
+          agentType as typeof environmentalAssessments.$inferSelect.agentType
+        )
       )
     );
 
@@ -78,7 +84,12 @@ export async function getAssessmentsByStatus(unitId: number, status: string) {
     .where(
       and(
         eq(environmentalAssessments.unitId, unitId),
-        eq(environmentalAssessments.status, status)
+        eq(
+          environmentalAssessments.status,
+          status as NonNullable<
+            typeof environmentalAssessments.$inferSelect.status
+          >
+        )
       )
     );
 
@@ -139,7 +150,7 @@ export async function getLinkedAssessmentsForDocument(documentId: number) {
 
   // Fetch full assessment data for each link
   const assessmentsWithData = await Promise.all(
-    links.map(async (link) => {
+    links.map(async link => {
       const assessment = await db
         .select()
         .from(environmentalAssessments)
@@ -168,7 +179,7 @@ export async function getDocumentsLinkedToAssessment(assessmentId: number) {
 
   // Fetch full document data for each link
   const documentsWithData = await Promise.all(
-    links.map(async (link) => {
+    links.map(async link => {
       const document = await db
         .select()
         .from(sstDocuments)
@@ -214,10 +225,11 @@ export async function getAssessmentSummaryForDocument(unitId: number) {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     )[0];
 
-    const conformCount = items.filter((i) => i.status === "Conforme").length;
-    const nonConformCount = items.filter((i) => i.status === "Não Conforme")
-      .length;
-    const attentionCount = items.filter((i) => i.status === "Atenção").length;
+    const conformCount = items.filter(i => i.status === "Conforme").length;
+    const nonConformCount = items.filter(
+      i => i.status === "Não Conforme"
+    ).length;
+    const attentionCount = items.filter(i => i.status === "Atenção").length;
 
     return {
       agentType,
@@ -245,18 +257,18 @@ export async function generatePgrDataFromAssessments(unitId: number) {
   // Build inventory of risks from assessments
   const inventoryOfRisks = summary
     .map(
-      (item) =>
+      item =>
         `${item.agentType}: ${item.latestAssessment?.agentName || "N/A"} - Status: ${item.latestAssessment?.status || "N/A"} - Medição: ${item.latestAssessment?.measurementValue} ${item.latestAssessment?.unit || ""}`
     )
     .join("\n");
 
   // Build action plan based on non-conformities
   const nonConformAssessments = assessments.filter(
-    (a) => a.status === "Não Conforme"
+    a => a.status === "Não Conforme"
   );
   const actionPlan =
     nonConformAssessments.length > 0
-      ? `Implementar medidas de controle para os seguintes agentes:\n${nonConformAssessments.map((a) => `- ${a.agentName}: ${a.notes || "Sem notas"}`).join("\n")}`
+      ? `Implementar medidas de controle para os seguintes agentes:\n${nonConformAssessments.map(a => `- ${a.agentName}: ${a.notes || "Sem notas"}`).join("\n")}`
       : "Todas as avaliações estão conformes. Manter monitoramento periódico.";
 
   return {
@@ -277,8 +289,8 @@ export async function generatePcmsoDataFromAssessments(unitId: number) {
 
   // Identify risk factors
   const riskFactors = summary
-    .filter((item) => item.riskLevel !== "Baixo")
-    .map((item) => item.agentType)
+    .filter(item => item.riskLevel !== "Baixo")
+    .map(item => item.agentType)
     .join(", ");
 
   // Recommend exams based on risk factors
@@ -313,18 +325,18 @@ export async function generateLtcatDataFromAssessments(unitId: number) {
 
   // Identify special activities
   const specialActivities = summary
-    .filter((item) => item.riskLevel !== "Baixo")
-    .map((item) => item.agentType)
-    .filter((type) => ["Químico", "Biológico", "Físico"].includes(type));
+    .filter(item => item.riskLevel !== "Baixo")
+    .map(item => item.agentType)
+    .filter(type => ["Químico", "Biológico", "Físico"].includes(type));
 
   // Identify exposure factors
   const exposureFactors = assessments
-    .map((a) => `${a.agentName}: ${a.measurementValue} ${a.unit}`)
+    .map(a => `${a.agentName}: ${a.measurementValue} ${a.unit}`)
     .join("; ");
 
   // Determine if special retirement is needed
   const conclusionSpecialRetirement = assessments.some(
-    (a) => a.status === "Não Conforme"
+    a => a.status === "Não Conforme"
   );
 
   return {
@@ -344,9 +356,9 @@ export async function generateLtipDataFromAssessments(unitId: number) {
 
   // Calculate insalubrity level
   const nonConformCount = assessments.filter(
-    (a) => a.status === "Não Conforme"
+    a => a.status === "Não Conforme"
   ).length;
-  const attentionCount = assessments.filter((a) => a.status === "Atenção").length;
+  const attentionCount = assessments.filter(a => a.status === "Atenção").length;
 
   let insalubrityLevel = "Nenhum";
   let insalubrityPercentage = 0;
@@ -361,7 +373,7 @@ export async function generateLtipDataFromAssessments(unitId: number) {
 
   // Check for danger (periculosidade)
   const dangerPresent = assessments.some(
-    (a) => a.agentType === "Físico" && a.status === "Não Conforme"
+    a => a.agentType === "Físico" && a.status === "Não Conforme"
   );
 
   return {

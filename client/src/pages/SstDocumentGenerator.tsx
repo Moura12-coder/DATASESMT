@@ -8,22 +8,44 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowRight, Plus, Trash2, Download, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const DOCUMENT_TYPES = {
   PGR: { label: "PGR (NR-01)", description: "Programa de Gestão de Riscos" },
-  PCMSO: { label: "PCMSO (NR-07)", description: "Programa de Controle Médico e Saúde Ocupacional" },
-  LTCAT: { label: "LTCAT", description: "Laudo Técnico de Condições Ambientais" },
-  LTIP: { label: "LTIP", description: "Laudo de Insalubridade e Periculosidade" },
+  PCMSO: {
+    label: "PCMSO (NR-07)",
+    description: "Programa de Controle Médico e Saúde Ocupacional",
+  },
+  LTCAT: {
+    label: "LTCAT",
+    description: "Laudo Técnico de Condições Ambientais",
+  },
+  LTIP: {
+    label: "LTIP",
+    description: "Laudo de Insalubridade e Periculosidade",
+  },
 };
 
 interface SelectedAssessment {
@@ -38,10 +60,16 @@ interface SelectedAssessment {
 export function SstDocumentGeneratorPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [step, setStep] = useState<"type" | "import" | "review" | "generate">("type");
-  const [selectedDocType, setSelectedDocType] = useState<keyof typeof DOCUMENT_TYPES | null>(null);
+  const [step, setStep] = useState<"type" | "import" | "review" | "generate">(
+    "type"
+  );
+  const [selectedDocType, setSelectedDocType] = useState<
+    keyof typeof DOCUMENT_TYPES | null
+  >(null);
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
-  const [selectedAssessments, setSelectedAssessments] = useState<SelectedAssessment[]>([]);
+  const [selectedAssessments, setSelectedAssessments] = useState<
+    SelectedAssessment[]
+  >([]);
   const [documentTitle, setDocumentTitle] = useState("");
   const [documentDescription, setDocumentDescription] = useState("");
 
@@ -49,31 +77,44 @@ export function SstDocumentGeneratorPage() {
   const { data: units = [] } = trpc.units.list.useQuery();
 
   // Get assessments for selected unit
-  const { data: assessments = [], isLoading: assessmentsLoading } = trpc.assessmentIntegration.getAssessmentsByUnit.useQuery(
-    { unitId: selectedUnit || 0 },
-    { enabled: !!selectedUnit && step === "import" }
-  );
+  const { data: assessments = [], isLoading: assessmentsLoading } =
+    trpc.assessmentIntegration.getAssessmentsByUnit.useQuery(
+      { unitId: selectedUnit || 0 },
+      { enabled: !!selectedUnit && step === "import" }
+    );
 
-  // Get generated data for document
-  const { data: generatedData } = trpc.assessmentIntegration[
-    selectedDocType === "PGR"
-      ? "generatePgrData"
-      : selectedDocType === "PCMSO"
-      ? "generatePcmsoData"
-      : selectedDocType === "LTCAT"
-      ? "generateLtcatData"
-      : "generateLtipData"
-  ].useQuery(
-    { unitId: selectedUnit || 0 },
-    { enabled: !!selectedUnit && step === "review" && !!selectedDocType }
+  // Hooks run in a stable order; enable only the chosen document generator.
+  const generate = { unitId: selectedUnit || 0 };
+  const enabled = !!selectedUnit && step === "review";
+  const pgrData = trpc.assessmentIntegration.generatePgrData.useQuery(
+    generate,
+    { enabled: enabled && selectedDocType === "PGR" }
   );
+  const pcmsoData = trpc.assessmentIntegration.generatePcmsoData.useQuery(
+    generate,
+    { enabled: enabled && selectedDocType === "PCMSO" }
+  );
+  const ltcatData = trpc.assessmentIntegration.generateLtcatData.useQuery(
+    generate,
+    { enabled: enabled && selectedDocType === "LTCAT" }
+  );
+  const ltipData = trpc.assessmentIntegration.generateLtipData.useQuery(
+    generate,
+    { enabled: enabled && selectedDocType === "LTIP" }
+  );
+  const generatedData = {
+    ...pgrData.data,
+    ...pcmsoData.data,
+    ...ltcatData.data,
+    ...ltipData.data,
+  };
 
   // Create document mutation
   const createDocMutation = trpc.sstDocuments.create.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success("Documento criado com sucesso!");
       // Link assessments to document
-      selectedAssessments.forEach((assessment) => {
+      selectedAssessments.forEach(assessment => {
         linkAssessmentMutation.mutate({
           documentId: data.documentId,
           assessmentId: assessment.id,
@@ -82,25 +123,28 @@ export function SstDocumentGeneratorPage() {
       });
       navigate("/app/sst-documents");
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(error.message || "Erro ao criar documento");
     },
   });
 
   // Link assessment mutation
-  const linkAssessmentMutation = trpc.assessmentIntegration.linkAssessmentToDocument.useMutation({
-    onSuccess: () => {
-      // Silent success - handled by parent mutation
-    },
-    onError: (error) => {
-      console.error("Error linking assessment:", error);
-    },
-  });
+  const linkAssessmentMutation =
+    trpc.assessmentIntegration.linkAssessmentToDocument.useMutation({
+      onSuccess: () => {
+        // Silent success - handled by parent mutation
+      },
+      onError: error => {
+        console.error("Error linking assessment:", error);
+      },
+    });
 
   const handleSelectAssessment = (assessment: any) => {
-    const isSelected = selectedAssessments.some((a) => a.id === assessment.id);
+    const isSelected = selectedAssessments.some(a => a.id === assessment.id);
     if (isSelected) {
-      setSelectedAssessments(selectedAssessments.filter((a) => a.id !== assessment.id));
+      setSelectedAssessments(
+        selectedAssessments.filter(a => a.id !== assessment.id)
+      );
     } else {
       setSelectedAssessments([...selectedAssessments, assessment]);
     }
@@ -130,7 +174,9 @@ export function SstDocumentGeneratorPage() {
   };
 
   if (!user) {
-    return <div className="p-8 text-center">Faça login para gerar documentos</div>;
+    return (
+      <div className="p-8 text-center">Faça login para gerar documentos</div>
+    );
   }
 
   return (
@@ -138,7 +184,9 @@ export function SstDocumentGeneratorPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Gerador de Documentos de SST</h1>
-        <p className="text-gray-600 mt-2">Crie documentos automaticamente importando avaliações ambientais</p>
+        <p className="text-gray-600 mt-2">
+          Crie documentos automaticamente importando avaliações ambientais
+        </p>
       </div>
 
       {/* Step Indicator */}
@@ -150,8 +198,8 @@ export function SstDocumentGeneratorPage() {
                 step === s
                   ? "bg-blue-600 text-white"
                   : ["type", "import", "review", "generate"].indexOf(step) > idx
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-200 text-gray-600"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-200 text-gray-600"
               }`}
             >
               {idx + 1}
@@ -164,13 +212,17 @@ export function SstDocumentGeneratorPage() {
       {/* Step 1: Select Document Type */}
       {step === "type" && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Selecione o tipo de documento</h2>
+          <h2 className="text-xl font-semibold">
+            Selecione o tipo de documento
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.entries(DOCUMENT_TYPES).map(([key, value]) => (
               <Card
                 key={key}
                 className={`cursor-pointer transition ${
-                  selectedDocType === key ? "ring-2 ring-blue-600" : "hover:shadow-md"
+                  selectedDocType === key
+                    ? "ring-2 ring-blue-600"
+                    : "hover:shadow-md"
                 }`}
                 onClick={() => {
                   setSelectedDocType(key as keyof typeof DOCUMENT_TYPES);
@@ -190,7 +242,9 @@ export function SstDocumentGeneratorPage() {
       {/* Step 2: Import Assessments */}
       {step === "import" && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Importar Avaliações Ambientais</h2>
+          <h2 className="text-xl font-semibold">
+            Importar Avaliações Ambientais
+          </h2>
 
           {/* Unit Selection */}
           {!selectedUnit ? (
@@ -212,9 +266,14 @@ export function SstDocumentGeneratorPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">
-                  Avaliações de: {units.find((u: any) => u.id === selectedUnit)?.name}
+                  Avaliações de:{" "}
+                  {units.find((u: any) => u.id === selectedUnit)?.name}
                 </h3>
-                <Button variant="outline" size="sm" onClick={() => setSelectedUnit(null)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedUnit(null)}
+                >
                   Trocar Unidade
                 </Button>
               </div>
@@ -224,7 +283,9 @@ export function SstDocumentGeneratorPage() {
               ) : assessments.length === 0 ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>Nenhuma avaliação encontrada para esta unidade</AlertDescription>
+                  <AlertDescription>
+                    Nenhuma avaliação encontrada para esta unidade
+                  </AlertDescription>
                 </Alert>
               ) : (
                 <div className="space-y-3">
@@ -233,13 +294,20 @@ export function SstDocumentGeneratorPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3 flex-1">
                           <Checkbox
-                            checked={selectedAssessments.some((a) => a.id === assessment.id)}
-                            onCheckedChange={() => handleSelectAssessment(assessment)}
+                            checked={selectedAssessments.some(
+                              a => a.id === assessment.id
+                            )}
+                            onCheckedChange={() =>
+                              handleSelectAssessment(assessment)
+                            }
                           />
                           <div className="flex-1">
-                            <div className="font-semibold">{assessment.agentName}</div>
+                            <div className="font-semibold">
+                              {assessment.agentName}
+                            </div>
                             <div className="text-sm text-gray-600">
-                              {assessment.agentType} • {assessment.measurementValue} {assessment.unit}
+                              {assessment.agentType} •{" "}
+                              {assessment.measurementValue} {assessment.unit}
                             </div>
                             <div className="flex items-center gap-2 mt-2">
                               <Badge
@@ -247,14 +315,16 @@ export function SstDocumentGeneratorPage() {
                                   assessment.status === "Conforme"
                                     ? "bg-green-100 text-green-800"
                                     : assessment.status === "Não Conforme"
-                                    ? "bg-red-100 text-red-800"
-                                    : "bg-yellow-100 text-yellow-800"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-yellow-100 text-yellow-800"
                                 }
                               >
                                 {assessment.status}
                               </Badge>
                               <span className="text-xs text-gray-500">
-                                {new Date(assessment.date).toLocaleDateString("pt-BR")}
+                                {new Date(assessment.date).toLocaleDateString(
+                                  "pt-BR"
+                                )}
                               </span>
                             </div>
                           </div>
@@ -292,10 +362,14 @@ export function SstDocumentGeneratorPage() {
                 <>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Inventário de Riscos</CardTitle>
+                      <CardTitle className="text-base">
+                        Inventário de Riscos
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm whitespace-pre-wrap">{generatedData.inventoryOfRisks}</p>
+                      <p className="text-sm whitespace-pre-wrap">
+                        {generatedData.inventoryOfRisks}
+                      </p>
                     </CardContent>
                   </Card>
                   <Card>
@@ -303,7 +377,9 @@ export function SstDocumentGeneratorPage() {
                       <CardTitle className="text-base">Plano de Ação</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm whitespace-pre-wrap">{generatedData.actionPlan}</p>
+                      <p className="text-sm whitespace-pre-wrap">
+                        {generatedData.actionPlan}
+                      </p>
                     </CardContent>
                   </Card>
                 </>
@@ -313,15 +389,21 @@ export function SstDocumentGeneratorPage() {
                 <>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Fatores de Risco Identificados</CardTitle>
+                      <CardTitle className="text-base">
+                        Fatores de Risco Identificados
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm">{generatedData.riskFactorsIdentified}</p>
+                      <p className="text-sm">
+                        {generatedData.riskFactorsIdentified}
+                      </p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Exames Recomendados</CardTitle>
+                      <CardTitle className="text-base">
+                        Exames Recomendados
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ul className="text-sm space-y-1">
@@ -338,14 +420,18 @@ export function SstDocumentGeneratorPage() {
                 <>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Atividades Especiais</CardTitle>
+                      <CardTitle className="text-base">
+                        Atividades Especiais
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ul className="text-sm space-y-1">
-                        {generatedData.specialActivities?.length > 0 ? (
-                          generatedData.specialActivities.map((activity: string) => (
-                            <li key={activity}>• {activity}</li>
-                          ))
+                        {(generatedData.specialActivities?.length ?? 0) > 0 ? (
+                          generatedData.specialActivities?.map(
+                            (activity: string) => (
+                              <li key={activity}>• {activity}</li>
+                            )
+                          )
                         ) : (
                           <li>Nenhuma atividade especial identificada</li>
                         )}
@@ -354,7 +440,9 @@ export function SstDocumentGeneratorPage() {
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Fatores de Exposição</CardTitle>
+                      <CardTitle className="text-base">
+                        Fatores de Exposição
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm">{generatedData.exposureFactors}</p>
@@ -375,14 +463,20 @@ export function SstDocumentGeneratorPage() {
                         <Badge>{generatedData.insalubrityLevel}</Badge>
                       </div>
                       <div>
-                        <span className="text-sm font-semibold">Percentual: </span>
-                        <span className="text-sm">{generatedData.insalubrityPercentage}%</span>
+                        <span className="text-sm font-semibold">
+                          Percentual:{" "}
+                        </span>
+                        <span className="text-sm">
+                          {generatedData.insalubrityPercentage}%
+                        </span>
                       </div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Periculosidade</CardTitle>
+                      <CardTitle className="text-base">
+                        Periculosidade
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <div>
@@ -390,8 +484,12 @@ export function SstDocumentGeneratorPage() {
                         <Badge>{generatedData.dangerLevel}</Badge>
                       </div>
                       <div>
-                        <span className="text-sm font-semibold">Percentual: </span>
-                        <span className="text-sm">{generatedData.dangerPercentage}%</span>
+                        <span className="text-sm font-semibold">
+                          Percentual:{" "}
+                        </span>
+                        <span className="text-sm">
+                          {generatedData.dangerPercentage}%
+                        </span>
                       </div>
                     </CardContent>
                   </Card>
@@ -418,14 +516,18 @@ export function SstDocumentGeneratorPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Informações do Documento</CardTitle>
+              <CardTitle className="text-base">
+                Informações do Documento
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-semibold">Título do Documento *</label>
+                <label className="text-sm font-semibold">
+                  Título do Documento *
+                </label>
                 <Input
                   value={documentTitle}
-                  onChange={(e) => setDocumentTitle(e.target.value)}
+                  onChange={e => setDocumentTitle(e.target.value)}
                   placeholder="Ex: PGR 2026 - Unidade São Paulo"
                   className="mt-2"
                 />
@@ -434,7 +536,7 @@ export function SstDocumentGeneratorPage() {
                 <label className="text-sm font-semibold">Descrição</label>
                 <Textarea
                   value={documentDescription}
-                  onChange={(e) => setDocumentDescription(e.target.value)}
+                  onChange={e => setDocumentDescription(e.target.value)}
                   placeholder="Adicione notas ou observações sobre este documento"
                   className="mt-2"
                   rows={4}
@@ -444,7 +546,8 @@ export function SstDocumentGeneratorPage() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {selectedAssessments.length} avaliação(ões) será(ão) vinculada(s) a este documento
+                  {selectedAssessments.length} avaliação(ões) será(ão)
+                  vinculada(s) a este documento
                 </AlertDescription>
               </Alert>
             </CardContent>

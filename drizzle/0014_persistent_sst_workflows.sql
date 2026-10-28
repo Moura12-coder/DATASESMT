@@ -1,0 +1,2 @@
+ALTER TABLE `technical_reports` MODIFY COLUMN `type` enum('LTCAT','PPP','Laudo Ambiental','Laudo Ergonômico','PGR','PPRA') NOT NULL;--> statement-breakpoint
+ALTER TABLE `technical_reports` MODIFY COLUMN `validUntil` date;

@@ -12,12 +12,17 @@ function createAdminContext(): TrpcContext {
       name: "Admin SST",
       loginMethod: "manus",
       role: "admin",
+      registrationStatus: "approved",
+      sessionVersion: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
     },
     req: { protocol: "https", headers: {} } as TrpcContext["req"],
-    res: { clearCookie: () => {} } as unknown as TrpcContext["res"],
+    res: {
+      clearCookie: () => {},
+      setHeader: () => {},
+    } as unknown as TrpcContext["res"],
   };
 }
 
@@ -30,12 +35,17 @@ function createUserContext(): TrpcContext {
       name: "Técnico SST",
       loginMethod: "manus",
       role: "user",
+      registrationStatus: "approved",
+      sessionVersion: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
     },
     req: { protocol: "https", headers: {} } as TrpcContext["req"],
-    res: { clearCookie: () => {} } as unknown as TrpcContext["res"],
+    res: {
+      clearCookie: () => {},
+      setHeader: () => {},
+    } as unknown as TrpcContext["res"],
   };
 }
 
@@ -54,7 +64,10 @@ describe("auth", () => {
     const ctx: TrpcContext = {
       user: null,
       req: { protocol: "https", headers: {} } as TrpcContext["req"],
-      res: { clearCookie: () => {} } as unknown as TrpcContext["res"],
+      res: {
+        clearCookie: () => {},
+        setHeader: () => {},
+      } as unknown as TrpcContext["res"],
     };
     const caller = appRouter.createCaller(ctx);
     const user = await caller.auth.me();
@@ -67,7 +80,10 @@ describe("auth", () => {
       user: createAdminContext().user,
       req: { protocol: "https", headers: {} } as TrpcContext["req"],
       res: {
-        clearCookie: (name: string) => { clearedCookies.push(name); },
+        setHeader: () => {},
+        clearCookie: (name: string) => {
+          clearedCookies.push(name);
+        },
       } as unknown as TrpcContext["res"],
     };
     const caller = appRouter.createCaller(ctx);
@@ -125,7 +141,9 @@ describe("router structure", () => {
   it("has esocial events router", () => {
     const router = appRouter as any;
     const routes = router._def?.procedures || {};
-    const esocialRoutes = Object.keys(routes).filter(k => k.startsWith("esocial."));
+    const esocialRoutes = Object.keys(routes).filter(k =>
+      k.startsWith("esocial.")
+    );
     expect(esocialRoutes.length).toBeGreaterThan(0);
   });
 });
@@ -170,10 +188,18 @@ describe("SST business logic", () => {
 
   it("compliance score is between 0 and 100", () => {
     // Simulate compliance score calculation
-    const calcCompliance = (examsOk: number, totalExams: number, episOk: number, totalEpis: number, trainingsOk: number, totalTrainings: number): number => {
+    const calcCompliance = (
+      examsOk: number,
+      totalExams: number,
+      episOk: number,
+      totalEpis: number,
+      trainingsOk: number,
+      totalTrainings: number
+    ): number => {
       const examsScore = totalExams > 0 ? (examsOk / totalExams) * 100 : 100;
       const episScore = totalEpis > 0 ? (episOk / totalEpis) * 100 : 100;
-      const trainingsScore = totalTrainings > 0 ? (trainingsOk / totalTrainings) * 100 : 100;
+      const trainingsScore =
+        totalTrainings > 0 ? (trainingsOk / totalTrainings) * 100 : 100;
       return Math.round((examsScore + episScore + trainingsScore) / 3);
     };
     const score = calcCompliance(8, 10, 5, 5, 3, 4);
@@ -182,9 +208,12 @@ describe("SST business logic", () => {
   });
 
   it("frequency rate formula: (accidents × 1,000,000) / hours worked", () => {
-    const calcFrequencyRate = (accidents: number, hoursWorked: number): number => {
+    const calcFrequencyRate = (
+      accidents: number,
+      hoursWorked: number
+    ): number => {
       if (hoursWorked === 0) return 0;
-      return Math.round((accidents * 1_000_000) / hoursWorked * 100) / 100;
+      return Math.round(((accidents * 1_000_000) / hoursWorked) * 100) / 100;
     };
     expect(calcFrequencyRate(2, 200000)).toBe(10);
     expect(calcFrequencyRate(0, 200000)).toBe(0);
@@ -228,7 +257,8 @@ describe("SST business logic", () => {
 // ─── Data validation tests ────────────────────────────────────────────────────
 describe("data validation", () => {
   it("CNPJ format validation (14 digits)", () => {
-    const isValidCNPJ = (cnpj: string): boolean => /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(cnpj);
+    const isValidCNPJ = (cnpj: string): boolean =>
+      /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(cnpj);
     expect(isValidCNPJ("12.345.678/0001-90")).toBe(true);
     expect(isValidCNPJ("12345678000190")).toBe(false);
     expect(isValidCNPJ("")).toBe(false);

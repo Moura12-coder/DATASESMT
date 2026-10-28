@@ -92,6 +92,20 @@
       "when": 1782742120540,
       "tag": "0012_bent_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1793130000000,
+      "tag": "0013_auth_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1793155626675,
+      "tag": "0014_persistent_sst_workflows",
+      "breakpoints": true
     }
   ]
 }

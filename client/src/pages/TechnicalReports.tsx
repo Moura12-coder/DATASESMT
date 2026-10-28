@@ -1,56 +1,96 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Plus, FileText, CheckCircle, Clock, AlertTriangle, Download } from "lucide-react";
+import {
+  Plus,
+  FileText,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Download,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export default function TechnicalReports() {
-  const [unitId] = useState(1);
+  const [unitId, setUnitId] = useState(0);
+  const { data: units = [] } = trpc.units.list.useQuery();
+  const utils = trpc.useUtils();
   const [selectedReport, setSelectedReport] = useState<number | null>(null);
   const [newReportForm, setNewReportForm] = useState({
     type: "LTCAT",
     title: "",
     author: "",
     validFrom: new Date().toISOString().split("T")[0],
-    validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0],
   });
 
   // Queries
-  const { data: reports } = { data: [] as any[] };
-  const { data: history } = { data: [] as any[] };
+  const { data: reports = [] } = trpc.phase1.technicalReports.list.useQuery(
+    { unitId },
+    { enabled: !!unitId }
+  );
+  const { data: history = [] } =
+    trpc.phase1.technicalReports.getHistory.useQuery(
+      { reportId: selectedReport || 0 },
+      { enabled: !!selectedReport }
+    );
 
   // Mutations
   const createReportMutation = trpc.phase1.technicalReports.create.useMutation({
     onSuccess: () => {
       toast.success("Laudo criado com sucesso");
+      utils.phase1.technicalReports.invalidate();
       setNewReportForm({
         type: "LTCAT",
         title: "",
         author: "",
         validFrom: new Date().toISOString().split("T")[0],
-        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
       });
     },
-    onError: (error) => toast.error(`Erro: ${error.message}`),
+    onError: error => toast.error(`Erro: ${error.message}`),
   });
 
   const approveMutation = trpc.phase1.technicalReports.approve.useMutation({
     onSuccess: () => {
       toast.success("Laudo aprovado com sucesso");
+      utils.phase1.technicalReports.invalidate();
     },
-    onError: (error) => toast.error(`Erro: ${error.message}`),
+    onError: error => toast.error(`Erro: ${error.message}`),
   });
 
   const handleCreateReport = () => {
-    if (!newReportForm.title || !newReportForm.author) {
+    if (!unitId || !newReportForm.title || !newReportForm.author) {
       toast.error("Preencha título e autor");
       return;
     }
@@ -118,15 +158,37 @@ export default function TechnicalReports() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Gestão de Laudos Técnicos</h1>
-        <p className="text-gray-600">Versionamento, rastreabilidade e controle de revisões</p>
+        <p className="text-gray-600">
+          Versionamento, rastreabilidade e controle de revisões
+        </p>
       </div>
 
       <Alert className="bg-blue-50 border-blue-200">
         <AlertDescription className="text-blue-800">
-          Todos os laudos técnicos (LTCAT, PPP, PPRA, PGR, etc.) são versionados automaticamente. Cada aprovação cria uma nova revisão com rastreabilidade completa.
+          Todos os laudos técnicos (LTCAT, PPP, PPRA, PGR, etc.) são versionados
+          automaticamente. Cada aprovação cria uma nova revisão com
+          rastreabilidade completa.
         </AlertDescription>
       </Alert>
 
+      <label className="block text-sm">
+        Unidade
+        <select
+          className="block border rounded p-2 mt-2"
+          value={unitId}
+          onChange={e => {
+            setUnitId(Number(e.target.value));
+            setSelectedReport(null);
+          }}
+        >
+          <option value={0}>Selecione uma unidade</option>
+          {units.map(unit => (
+            <option key={unit.id} value={unit.id}>
+              {unit.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <Tabs defaultValue="reports" className="w-full">
         <TabsList>
           <TabsTrigger value="reports">Laudos</TabsTrigger>
@@ -136,10 +198,14 @@ export default function TechnicalReports() {
         {/* TAB: Laudos */}
         <TabsContent value="reports" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Laudos Técnicos da Unidade</h2>
+            <h2 className="text-xl font-semibold">
+              Laudos Técnicos da Unidade
+            </h2>
             <Dialog>
               <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" /> Novo Laudo</Button>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Novo Laudo
+                </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
@@ -148,17 +214,34 @@ export default function TechnicalReports() {
                 <div className="space-y-4">
                   <div>
                     <Label>Tipo de Laudo</Label>
-                    <Select value={newReportForm.type} onValueChange={(v) => setNewReportForm({ ...newReportForm, type: v })}>
+                    <Select
+                      value={newReportForm.type}
+                      onValueChange={v =>
+                        setNewReportForm({ ...newReportForm, type: v })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="LTCAT">LTCAT - Laudo Técnico de Condições Ambientais</SelectItem>
-                        <SelectItem value="PPP">PPP - Perfil Profissiográfico Previdenciário</SelectItem>
-                        <SelectItem value="PPRA">PPRA - Programa de Prevenção de Riscos Ambientais</SelectItem>
-                        <SelectItem value="PGR">PGR - Programa de Gerenciamento de Riscos</SelectItem>
-                        <SelectItem value="LAUDO_ERGONOMICO">Laudo Ergonômico</SelectItem>
-                        <SelectItem value="LAUDO_AMBIENTAL">Laudo Ambiental</SelectItem>
+                        <SelectItem value="LTCAT">
+                          LTCAT - Laudo Técnico de Condições Ambientais
+                        </SelectItem>
+                        <SelectItem value="PPP">
+                          PPP - Perfil Profissiográfico Previdenciário
+                        </SelectItem>
+                        <SelectItem value="PPRA">
+                          PPRA - Programa de Prevenção de Riscos Ambientais
+                        </SelectItem>
+                        <SelectItem value="PGR">
+                          PGR - Programa de Gerenciamento de Riscos
+                        </SelectItem>
+                        <SelectItem value="Laudo Ergonômico">
+                          Laudo Ergonômico
+                        </SelectItem>
+                        <SelectItem value="Laudo Ambiental">
+                          Laudo Ambiental
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -168,7 +251,12 @@ export default function TechnicalReports() {
                     <Input
                       placeholder="Título do laudo"
                       value={newReportForm.title}
-                      onChange={(e) => setNewReportForm({ ...newReportForm, title: e.target.value })}
+                      onChange={e =>
+                        setNewReportForm({
+                          ...newReportForm,
+                          title: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -177,7 +265,12 @@ export default function TechnicalReports() {
                     <Input
                       placeholder="Nome do Engenheiro SST"
                       value={newReportForm.author}
-                      onChange={(e) => setNewReportForm({ ...newReportForm, author: e.target.value })}
+                      onChange={e =>
+                        setNewReportForm({
+                          ...newReportForm,
+                          author: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -187,7 +280,12 @@ export default function TechnicalReports() {
                       <Input
                         type="date"
                         value={newReportForm.validFrom}
-                        onChange={(e) => setNewReportForm({ ...newReportForm, validFrom: e.target.value })}
+                        onChange={e =>
+                          setNewReportForm({
+                            ...newReportForm,
+                            validFrom: e.target.value,
+                          })
+                        }
                       />
                     </div>
                     <div>
@@ -195,13 +293,24 @@ export default function TechnicalReports() {
                       <Input
                         type="date"
                         value={newReportForm.validUntil}
-                        onChange={(e) => setNewReportForm({ ...newReportForm, validUntil: e.target.value })}
+                        onChange={e =>
+                          setNewReportForm({
+                            ...newReportForm,
+                            validUntil: e.target.value,
+                          })
+                        }
                       />
                     </div>
                   </div>
 
-                  <Button onClick={handleCreateReport} disabled={createReportMutation.isPending} className="w-full">
-                    {createReportMutation.isPending ? "Criando..." : "Criar Laudo"}
+                  <Button
+                    onClick={handleCreateReport}
+                    disabled={createReportMutation.isPending}
+                    className="w-full"
+                  >
+                    {createReportMutation.isPending
+                      ? "Criando..."
+                      : "Criar Laudo"}
                   </Button>
                 </div>
               </DialogContent>
@@ -222,11 +331,15 @@ export default function TechnicalReports() {
                         <FileText className="h-5 w-5 text-blue-600" />
                         <CardTitle>{report.title}</CardTitle>
                       </div>
-                      <CardDescription>{getReportTypeLabel(report.type)}</CardDescription>
+                      <CardDescription>
+                        {getReportTypeLabel(report.type)}
+                      </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusIcon(report.status)}
-                      <Badge className={getStatusColor(report.status)}>{report.status}</Badge>
+                      <Badge className={getStatusColor(report.status)}>
+                        {report.status}
+                      </Badge>
                     </div>
                   </div>
                 </CardHeader>
@@ -243,18 +356,26 @@ export default function TechnicalReports() {
                     </div>
                     <div>
                       <p className="text-gray-600">Válido de</p>
-                      <p className="font-semibold">{new Date(report.validFrom).toLocaleDateString("pt-BR")}</p>
+                      <p className="font-semibold">
+                        {new Date(report.validFrom).toLocaleDateString("pt-BR")}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-600">Válido até</p>
-                      <p className="font-semibold">{new Date(report.validUntil).toLocaleDateString("pt-BR")}</p>
+                      <p className="font-semibold">
+                        {report.validUntil
+                          ? new Date(report.validUntil).toLocaleDateString(
+                              "pt-BR"
+                            )
+                          : "Sem término definido"}
+                      </p>
                     </div>
                   </div>
 
                   {report.status === "Rascunho" && (
                     <Button
                       size="sm"
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
                         handleApprove(report.id);
                       }}
@@ -290,7 +411,9 @@ export default function TechnicalReports() {
             <Card className="bg-yellow-50 border-yellow-200">
               <CardContent className="pt-6 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                <p className="text-yellow-800">Selecione um laudo para ver seu histórico de revisões</p>
+                <p className="text-yellow-800">
+                  Selecione um laudo para ver seu histórico de revisões
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -300,10 +423,16 @@ export default function TechnicalReports() {
                   <CardContent className="pt-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="font-semibold">Revisão {revision.revision}</p>
-                        <p className="text-sm text-gray-600">Status: {revision.status}</p>
+                        <p className="font-semibold">
+                          Revisão {revision.revision}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Status: {revision.status}
+                        </p>
                       </div>
-                      <Badge variant="outline">{new Date(revision.date).toLocaleDateString("pt-BR")}</Badge>
+                      <Badge variant="outline">
+                        {new Date(revision.date).toLocaleDateString("pt-BR")}
+                      </Badge>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -313,22 +442,33 @@ export default function TechnicalReports() {
                       </div>
                       <div>
                         <p className="text-gray-600">Aprovador</p>
-                        <p className="font-semibold">{revision.approver || "-"}</p>
+                        <p className="font-semibold">
+                          {revision.approver || "-"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-600">Válido de</p>
-                        <p className="font-semibold">{new Date(revision.validFrom).toLocaleDateString("pt-BR")}</p>
+                        <p className="font-semibold">
+                          {new Date(revision.validFrom).toLocaleDateString(
+                            "pt-BR"
+                          )}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-600">Válido até</p>
-                        <p className="font-semibold">{new Date(revision.validUntil).toLocaleDateString("pt-BR")}</p>
+                        <p className="font-semibold">
+                          {new Date(revision.validUntil).toLocaleDateString(
+                            "pt-BR"
+                          )}
+                        </p>
                       </div>
                     </div>
 
                     {revision.status === "Aprovado" && (
                       <div className="mt-4 pt-4 border-t">
                         <p className="text-sm text-gray-600">
-                          Aprovado em {new Date(revision.date).toLocaleDateString("pt-BR")}
+                          Aprovado em{" "}
+                          {new Date(revision.date).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
                     )}

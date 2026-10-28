@@ -7,7 +7,13 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,9 +38,9 @@ export function RegisterPage() {
     onSuccess: () => {
       toast.success("Registro realizado com sucesso!");
       setStep("success");
-      setTimeout(() => navigate("/"), 3000);
+      setTimeout(() => navigate("/login"), 3000);
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(error.message || "Erro ao registrar");
       setErrors({ submit: error.message || "Erro ao registrar usuário" });
     },
@@ -45,12 +51,14 @@ export function RegisterPage() {
 
     if (!formData.email) newErrors.email = "Email é obrigatório";
     if (!formData.password) newErrors.password = "Senha é obrigatória";
-    if (formData.password.length < 8) newErrors.password = "Senha deve ter pelo menos 8 caracteres";
+    if (formData.password.length < 8)
+      newErrors.password = "Senha deve ter pelo menos 8 caracteres";
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Senhas não conferem";
     }
     if (!formData.name) newErrors.name = "Nome é obrigatório";
-    if (!formData.companyName) newErrors.companyName = "Nome da empresa é obrigatório";
+    if (!formData.companyName)
+      newErrors.companyName = "Nome da empresa é obrigatório";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -72,9 +80,9 @@ export function RegisterPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+      setErrors(prev => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -88,14 +96,18 @@ export function RegisterPage() {
             </div>
             <CardTitle>Registro Realizado com Sucesso!</CardTitle>
             <CardDescription>
-              Seu registro foi recebido e está aguardando aprovação do administrador.
+              Seu registro foi recebido e está aguardando aprovação do
+              administrador.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-600 mb-4">
-              Você receberá um email quando sua conta for aprovada.
+              Entre em contato com o administrador para acompanhar a aprovação
+              da sua conta.
             </p>
-            <p className="text-xs text-gray-500">Redirecionando em alguns segundos...</p>
+            <p className="text-xs text-gray-500">
+              Redirecionando em alguns segundos...
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -131,7 +143,9 @@ export function RegisterPage() {
                 placeholder="João Silva"
                 disabled={registerMutation.isPending}
               />
-              {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name}</p>
+              )}
             </div>
 
             {/* Email */}
@@ -146,7 +160,9 @@ export function RegisterPage() {
                 placeholder="seu@email.com"
                 disabled={registerMutation.isPending}
               />
-              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email}</p>
+              )}
             </div>
 
             {/* Company Name */}
@@ -160,7 +176,9 @@ export function RegisterPage() {
                 placeholder="Sua Empresa LTDA"
                 disabled={registerMutation.isPending}
               />
-              {errors.companyName && <p className="text-sm text-red-500">{errors.companyName}</p>}
+              {errors.companyName && (
+                <p className="text-sm text-red-500">{errors.companyName}</p>
+              )}
             </div>
 
             {/* CNPJ */}
@@ -201,7 +219,9 @@ export function RegisterPage() {
                 placeholder="••••••••"
                 disabled={registerMutation.isPending}
               />
-              {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password}</p>
+              )}
             </div>
 
             {/* Confirm Password */}

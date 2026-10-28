@@ -1,13 +1,24 @@
-import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Input } from './ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Badge } from './ui/badge';
-import { toast } from 'sonner';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, TrendingUp, Calendar } from 'lucide-react';
-import { trpc } from '@/lib/trpc';
+import React, { useState } from "react";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Input } from "./ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Badge } from "./ui/badge";
+import { toast } from "sonner";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { Download, TrendingUp, Calendar } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 interface ReportData {
   unitId: number;
@@ -59,33 +70,41 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showComparisonDialog, setShowComparisonDialog] = useState(false);
   const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [comparisonData, setComparisonData] = useState<ComparisonData | null>(null);
+  const [comparisonData, setComparisonData] = useState<ComparisonData | null>(
+    null
+  );
 
   // Report form
   const [reportStartDate, setReportStartDate] = useState(
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
   const [reportEndDate, setReportEndDate] = useState(
-    new Date().toISOString().split('T')[0]
+    new Date().toISOString().split("T")[0]
   );
 
   // Comparison form
   const [period1Start, setPeriod1Start] = useState(
-    new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
   const [period1End, setPeriod1End] = useState(
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
   const [period2Start, setPeriod2Start] = useState(
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   );
   const [period2End, setPeriod2End] = useState(
-    new Date().toISOString().split('T')[0]
+    new Date().toISOString().split("T")[0]
   );
 
   // Mutations
   const reportMutation = trpc.riskMap.generateRiskAnalysisReport.useQuery(
-    { unitId, startDate: new Date(reportStartDate), endDate: new Date(reportEndDate) },
+    {
+      unitId,
+      period1Start: new Date(reportStartDate),
+      period1End: new Date(reportEndDate),
+      period2Start: new Date(period2Start),
+      period2End: new Date(period2End),
+    },
     { enabled: false }
   );
 
@@ -93,12 +112,17 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
     const data = await reportMutation.refetch();
     if (data.data) {
       setReportData(data.data as any);
-      toast.success('Relatório gerado com sucesso');
+      toast.success("Relatório gerado com sucesso");
     }
   };
 
   const comparisonMutation = trpc.riskMap.compareRiskMapPeriods.useQuery(
-    { unitId, startDate1: new Date(period1Start), endDate1: new Date(period1End), startDate2: new Date(period2Start), endDate2: new Date(period2End) },
+    {
+      startDate1: new Date(period1Start),
+      endDate1: new Date(period1End),
+      startDate2: new Date(period2Start),
+      endDate2: new Date(period2End),
+    },
     { enabled: false }
   );
 
@@ -106,7 +130,7 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
     const data = await comparisonMutation.refetch();
     if (data.data) {
       setComparisonData(data.data as any);
-      toast.success('Comparação gerada com sucesso');
+      toast.success("Comparação gerada com sucesso");
     }
   };
 
@@ -120,33 +144,33 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
 
   const handleExportPDF = () => {
     if (!reportData) return;
-    toast.info('Exportação para PDF em desenvolvimento');
+    toast.info("Exportação para PDF em desenvolvimento");
   };
 
   const handleExportExcel = () => {
     if (!reportData) return;
-    toast.info('Exportação para Excel em desenvolvimento');
+    toast.info("Exportação para Excel em desenvolvimento");
   };
 
   const chartData = reportData?.changesByType
     ? [
-        { name: 'Posição', value: reportData.changesByType.position_update },
-        { name: 'Nome', value: reportData.changesByType.name_update },
-        { name: 'Risco', value: reportData.changesByType.risk_update },
+        { name: "Posição", value: reportData.changesByType.position_update },
+        { name: "Nome", value: reportData.changesByType.name_update },
+        { name: "Risco", value: reportData.changesByType.risk_update },
       ]
     : [];
 
   const comparisonChartData = comparisonData
     ? [
         {
-          name: 'Período 1',
+          name: "Período 1",
           changes: comparisonData.period1.totalChanges,
           posição: comparisonData.period1.changesByType.position_update,
           nome: comparisonData.period1.changesByType.name_update,
           risco: comparisonData.period1.changesByType.risk_update,
         },
         {
-          name: 'Período 2',
+          name: "Período 2",
           changes: comparisonData.period2.totalChanges,
           posição: comparisonData.period2.changesByType.position_update,
           nome: comparisonData.period2.changesByType.name_update,
@@ -169,7 +193,7 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
               <Input
                 type="date"
                 value={reportStartDate}
-                onChange={(e) => setReportStartDate(e.target.value)}
+                onChange={e => setReportStartDate(e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -178,7 +202,7 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
               <Input
                 type="date"
                 value={reportEndDate}
-                onChange={(e) => setReportEndDate(e.target.value)}
+                onChange={e => setReportEndDate(e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -201,8 +225,8 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
           <CardHeader>
             <CardTitle>Relatório de Análise de Riscos</CardTitle>
             <p className="text-sm text-gray-600 mt-2">
-              Período: {new Date(reportData.period.start).toLocaleDateString()} a{' '}
-              {new Date(reportData.period.end).toLocaleDateString()}
+              Período: {new Date(reportData.period.start).toLocaleDateString()}{" "}
+              a {new Date(reportData.period.end).toLocaleDateString()}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -210,11 +234,15 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
             <div className="grid grid-cols-3 gap-4">
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-600">Total de Áreas</p>
-                <p className="text-2xl font-bold text-blue-600">{reportData.totalAreas}</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {reportData.totalAreas}
+                </p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
                 <p className="text-sm text-gray-600">Total de Mudanças</p>
-                <p className="text-2xl font-bold text-green-600">{reportData.totalChanges}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {reportData.totalChanges}
+                </p>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg">
                 <p className="text-sm text-gray-600">Média por Área</p>
@@ -243,14 +271,19 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
             <div>
               <h4 className="font-semibold mb-3">Áreas Monitoradas</h4>
               <div className="space-y-2">
-                {reportData.areas.map((area) => (
-                  <div key={area.id} className="p-3 border rounded-lg flex justify-between items-center">
+                {reportData.areas.map(area => (
+                  <div
+                    key={area.id}
+                    className="p-3 border rounded-lg flex justify-between items-center"
+                  >
                     <div>
                       <p className="font-medium">{area.name}</p>
                       <Badge variant="outline">{area.riskLevel}</Badge>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600">{area.changes} mudanças</p>
+                      <p className="text-sm text-gray-600">
+                        {area.changes} mudanças
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -259,11 +292,19 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
 
             {/* Export Buttons */}
             <div className="flex gap-2">
-              <Button onClick={handleExportPDF} variant="outline" className="flex-1">
+              <Button
+                onClick={handleExportPDF}
+                variant="outline"
+                className="flex-1"
+              >
                 <Download className="w-4 h-4 mr-2" />
                 Exportar PDF
               </Button>
-              <Button onClick={handleExportExcel} variant="outline" className="flex-1">
+              <Button
+                onClick={handleExportExcel}
+                variant="outline"
+                className="flex-1"
+              >
                 <Download className="w-4 h-4 mr-2" />
                 Exportar Excel
               </Button>
@@ -284,7 +325,7 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
               <Input
                 type="date"
                 value={period1Start}
-                onChange={(e) => setPeriod1Start(e.target.value)}
+                onChange={e => setPeriod1Start(e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -293,7 +334,7 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
               <Input
                 type="date"
                 value={period1End}
-                onChange={(e) => setPeriod1End(e.target.value)}
+                onChange={e => setPeriod1End(e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -302,7 +343,7 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
               <Input
                 type="date"
                 value={period2Start}
-                onChange={(e) => setPeriod2Start(e.target.value)}
+                onChange={e => setPeriod2Start(e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -311,7 +352,7 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
               <Input
                 type="date"
                 value={period2End}
-                onChange={(e) => setPeriod2End(e.target.value)}
+                onChange={e => setPeriod2End(e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -354,8 +395,12 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
             {/* Difference */}
             <div className="p-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
               <p className="text-sm text-gray-600">Diferença</p>
-              <p className={`text-2xl font-bold ${comparisonData.differences.totalChangesDifference > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {comparisonData.differences.totalChangesDifference > 0 ? '+' : ''}
+              <p
+                className={`text-2xl font-bold ${comparisonData.differences.totalChangesDifference > 0 ? "text-red-600" : "text-green-600"}`}
+              >
+                {comparisonData.differences.totalChangesDifference > 0
+                  ? "+"
+                  : ""}
                 {comparisonData.differences.totalChangesDifference}
               </p>
             </div>
@@ -370,7 +415,12 @@ export function RiskMapReports({ unitId }: { unitId: number }) {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="changes" stroke="#3b82f6" strokeWidth={2} />
+                    <Line
+                      type="monotone"
+                      dataKey="changes"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

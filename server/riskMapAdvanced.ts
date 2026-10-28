@@ -1,12 +1,12 @@
-import { getDb } from './db';
+import { getDb } from "./db";
 import {
   riskMapAreas,
   riskMapAreaHistory,
   riskMapAlerts,
   riskMapComparisons,
-} from '../drizzle/schema';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
-import { notifyOwner } from './_core/notification';
+} from "../drizzle/schema";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { notifyOwner } from "./_core/notification";
 
 /**
  * PHASE 1: Drag & Drop Support
@@ -19,23 +19,26 @@ export async function updateAreaPositionWithHistory(
   userId: number
 ) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   // Get current position for history
   const currentArea = await db.query.riskMapAreas.findFirst({
     where: eq(riskMapAreas.id, areaId),
   });
 
   if (!currentArea) {
-    throw new Error('Area not found');
+    throw new Error("Area not found");
   }
 
   // Update area position
   await db
     .update(riskMapAreas)
     .set({
-      x,
-      y,
+      coordinates: {
+        ...((currentArea.coordinates || {}) as Record<string, unknown>),
+        x,
+        y,
+      },
       updatedAt: new Date(),
     })
     .where(eq(riskMapAreas.id, areaId));
@@ -43,10 +46,10 @@ export async function updateAreaPositionWithHistory(
   // Record in history
   await db.insert(riskMapAreaHistory).values({
     areaId,
-    changeType: 'position_update',
+    changeType: "position_update",
     oldValue: JSON.stringify({
-      x: currentArea.x,
-      y: currentArea.y,
+      x: (currentArea.coordinates as { x?: number } | null)?.x ?? 0,
+      y: (currentArea.coordinates as { y?: number } | null)?.y ?? 0,
     }),
     newValue: JSON.stringify({ x, y }),
     changedBy: userId,
@@ -64,15 +67,15 @@ export async function updateAreaNameWithHistory(
   userId: number
 ) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   // Get current name for history
   const currentArea = await db.query.riskMapAreas.findFirst({
     where: eq(riskMapAreas.id, areaId),
   });
 
   if (!currentArea) {
-    throw new Error('Area not found');
+    throw new Error("Area not found");
   }
 
   // Update area name
@@ -87,7 +90,7 @@ export async function updateAreaNameWithHistory(
   // Record in history
   await db.insert(riskMapAreaHistory).values({
     areaId,
-    changeType: 'name_update',
+    changeType: "name_update",
     oldValue: currentArea.name,
     newValue: newName,
     changedBy: userId,
@@ -101,8 +104,8 @@ export async function updateAreaNameWithHistory(
  */
 export async function getAreaChangeHistory(areaId: number) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   const history = await db.query.riskMapAreaHistory.findMany({
     where: eq(riskMapAreaHistory.areaId, areaId),
     orderBy: desc(riskMapAreaHistory.changedAt),
@@ -117,35 +120,37 @@ export async function getAreaChangeHistory(areaId: number) {
  */
 export async function createRiskAlert(
   areaId: number,
-  riskLevel: 'toleravel' | 'moderado' | 'substancial' | 'intoleravel',
-  message: string
+  riskLevel: "toleravel" | "moderado" | "substancial" | "intoleravel",
+  message: string,
+  userId: number
 ) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   const area = await db.query.riskMapAreas.findFirst({
     where: eq(riskMapAreas.id, areaId),
   });
 
   if (!area) {
-    throw new Error('Area not found');
+    throw new Error("Area not found");
   }
 
-  const severity = riskLevel === 'intoleravel' ? 'high' : riskLevel === 'substancial' ? 'medium' : 'low';
+  const severity =
+    riskLevel === "intoleravel"
+      ? "high"
+      : riskLevel === "substancial"
+        ? "medium"
+        : "low";
 
   const alert = await db.insert(riskMapAlerts).values({
     areaId,
-    riskLevel,
+    unitId: area.unitId,
+    oldRiskLevel: area.riskLevel,
+    newRiskLevel: riskLevel,
     severity,
-    message,
-    isRead: false,
+    createdBy: userId,
+    acknowledged: false,
     createdAt: new Date(),
-  });
-
-  // Notify owner
-  await notifyOwner({
-    title: `Alerta de Risco: ${area.name}`,
-    content: `${message} - Nível: ${riskLevel}`,
   });
 
   return alert;
@@ -156,8 +161,8 @@ export async function createRiskAlert(
  */
 export async function getRiskAlerts(areaId?: number) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   const alerts = await db.query.riskMapAlerts.findMany({
     where: areaId ? eq(riskMapAlerts.areaId, areaId) : undefined,
     orderBy: desc(riskMapAlerts.createdAt),
@@ -169,13 +174,17 @@ export async function getRiskAlerts(areaId?: number) {
 /**
  * Mark alert as read
  */
-export async function markAlertAsRead(alertId: number) {
+export async function markAlertAsRead(alertId: number, userId: number) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   await db
     .update(riskMapAlerts)
-    .set({ isRead: true })
+    .set({
+      acknowledged: true,
+      acknowledgedAt: new Date(),
+      acknowledgedBy: userId,
+    })
     .where(eq(riskMapAlerts.id, alertId));
 }
 
@@ -189,14 +198,17 @@ export async function rollbackToVersion(
   userId: number
 ) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   const history = await db.query.riskMapAreaHistory.findFirst({
-    where: eq(riskMapAreaHistory.id, versionId),
+    where: and(
+      eq(riskMapAreaHistory.id, versionId),
+      eq(riskMapAreaHistory.areaId, areaId)
+    ),
   });
 
   if (!history) {
-    throw new Error('Version not found');
+    throw new Error("Version not found");
   }
 
   const currentArea = await db.query.riskMapAreas.findFirst({
@@ -204,24 +216,30 @@ export async function rollbackToVersion(
   });
 
   if (!currentArea) {
-    throw new Error('Area not found');
+    throw new Error("Area not found");
   }
 
-  // Parse old values and update
-  const oldValues = JSON.parse(history.oldValue || '{}');
-
+  let oldValues: { name?: string; coordinates?: unknown };
+  if (history.changeType === "name_update")
+    oldValues = { name: history.oldValue || currentArea.name };
+  else if (history.changeType === "position_update")
+    oldValues = {
+      coordinates: {
+        ...((currentArea.coordinates || {}) as Record<string, unknown>),
+        ...JSON.parse(history.oldValue || "{}"),
+      },
+    };
+  else
+    throw new Error("Este tipo de alteração não permite reversão automática");
   await db
     .update(riskMapAreas)
-    .set({
-      ...oldValues,
-      updatedAt: new Date(),
-    })
+    .set({ ...oldValues, updatedAt: new Date() })
     .where(eq(riskMapAreas.id, areaId));
 
   // Record rollback in history
   await db.insert(riskMapAreaHistory).values({
     areaId,
-    changeType: 'rollback',
+    changeType: "rollback",
     oldValue: JSON.stringify(currentArea),
     newValue: JSON.stringify(oldValues),
     changedBy: userId,
@@ -240,8 +258,8 @@ export async function compareRiskMapPeriods(
   endDate2: Date
 ) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   const period1Changes = await db.query.riskMapAreaHistory.findMany({
     where: and(
       gte(riskMapAreaHistory.changedAt, startDate1),
@@ -265,12 +283,14 @@ export async function compareRiskMapPeriods(
       totalChanges: period1Changes.length,
       changesByType: {
         position_update: period1Changes.filter(
-          (h: any) => h.changeType === 'position_update'
+          (h: any) => h.changeType === "position_update"
         ).length,
-        name_update: period1Changes.filter((h: any) => h.changeType === 'name_update')
-          .length,
-        risk_update: period1Changes.filter((h: any) => h.changeType === 'risk_update')
-          .length,
+        name_update: period1Changes.filter(
+          (h: any) => h.changeType === "name_update"
+        ).length,
+        risk_update: period1Changes.filter(
+          (h: any) => h.changeType === "risk_update"
+        ).length,
       },
     },
     period2: {
@@ -279,26 +299,34 @@ export async function compareRiskMapPeriods(
       totalChanges: period2Changes.length,
       changesByType: {
         position_update: period2Changes.filter(
-          (h: any) => h.changeType === 'position_update'
+          (h: any) => h.changeType === "position_update"
         ).length,
-        name_update: period2Changes.filter((h: any) => h.changeType === 'name_update')
-          .length,
-        risk_update: period2Changes.filter((h: any) => h.changeType === 'risk_update')
-          .length,
+        name_update: period2Changes.filter(
+          (h: any) => h.changeType === "name_update"
+        ).length,
+        risk_update: period2Changes.filter(
+          (h: any) => h.changeType === "risk_update"
+        ).length,
       },
     },
     differences: {
       totalChangesDifference: period2Changes.length - period1Changes.length,
       changesByTypeDifference: {
         position_update:
-          period2Changes.filter((h: any) => h.changeType === 'position_update').length -
-          period1Changes.filter((h: any) => h.changeType === 'position_update').length,
+          period2Changes.filter((h: any) => h.changeType === "position_update")
+            .length -
+          period1Changes.filter((h: any) => h.changeType === "position_update")
+            .length,
         name_update:
-          period2Changes.filter((h: any) => h.changeType === 'name_update').length -
-          period1Changes.filter((h: any) => h.changeType === 'name_update').length,
+          period2Changes.filter((h: any) => h.changeType === "name_update")
+            .length -
+          period1Changes.filter((h: any) => h.changeType === "name_update")
+            .length,
         risk_update:
-          period2Changes.filter((h: any) => h.changeType === 'risk_update').length -
-          period1Changes.filter((h: any) => h.changeType === 'risk_update').length,
+          period2Changes.filter((h: any) => h.changeType === "risk_update")
+            .length -
+          period1Changes.filter((h: any) => h.changeType === "risk_update")
+            .length,
       },
     },
   };
@@ -309,8 +337,8 @@ export async function compareRiskMapPeriods(
  */
 export async function getRiskMapComparison(comparisonId: number) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   const comparison = await db.query.riskMapComparisons.findFirst({
     where: eq(riskMapComparisons.id, comparisonId),
   });
@@ -326,17 +354,21 @@ export async function saveRiskMapComparison(
   period1End: Date,
   period2Start: Date,
   period2End: Date,
-  comparisonData: any
+  comparisonData: unknown,
+  unitId: number,
+  createdBy: number
 ) {
   const db = await getDb();
-  if (!db) throw new Error('Database not available');
-  
+  if (!db) throw new Error("Database not available");
+
   const result = await db.insert(riskMapComparisons).values({
     period1Start,
     period1End,
     period2Start,
     period2End,
-    comparisonData: JSON.stringify(comparisonData),
+    unitId,
+    createdBy,
+    comparisonData,
     createdAt: new Date(),
   });
 
@@ -346,9 +378,70 @@ export async function saveRiskMapComparison(
 /**
  * Placeholder for generating a risk analysis report.
  */
-export async function generateRiskAnalysisReport(unitId: number, period1Start: Date, period1End: Date, period2Start: Date, period2End: Date): Promise<string> {
-  // This is a placeholder. Actual implementation would involve complex logic
-  // to gather data, perform analysis, and format a report.
-  console.log(`Generating risk analysis report for unit ${unitId} comparing periods ${period1Start.toISOString()}-${period1End.toISOString()} and ${period2Start.toISOString()}-${period2End.toISOString()}`);
-  return Promise.resolve("Relatório de Análise de Risco Gerado (Placeholder)");
+export async function generateRiskAnalysisReport(
+  unitId: number,
+  period1Start: Date,
+  period1End: Date,
+  period2Start: Date,
+  period2End: Date
+) {
+  if (period1Start > period1End || period2Start > period2End)
+    throw new Error("Período inválido");
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const areas = await db
+    .select()
+    .from(riskMapAreas)
+    .where(eq(riskMapAreas.unitId, unitId));
+  const rows = await db
+    .select({ history: riskMapAreaHistory })
+    .from(riskMapAreaHistory)
+    .innerJoin(riskMapAreas, eq(riskMapAreaHistory.areaId, riskMapAreas.id))
+    .where(
+      and(
+        eq(riskMapAreas.unitId, unitId),
+        gte(riskMapAreaHistory.changedAt, period1Start),
+        lte(riskMapAreaHistory.changedAt, period1End)
+      )
+    );
+  const changes = rows.map(row => row.history);
+  return {
+    unitId,
+    period: { start: period1Start, end: period1End },
+    totalAreas: areas.length,
+    totalChanges: changes.length,
+    changesByType: {
+      position_update: changes.filter(h => h.changeType === "position_update")
+        .length,
+      name_update: changes.filter(h => h.changeType === "name_update").length,
+      risk_update: changes.filter(h => h.changeType === "risk_update").length,
+    },
+    areas: areas.map(area => ({
+      id: area.id,
+      name: area.name,
+      riskLevel: area.riskLevel,
+      changes: changes.filter(h => h.areaId === area.id).length,
+    })),
+    generatedAt: new Date(),
+  };
+}
+
+export async function getUnitAlerts(
+  unitId: number,
+  limit = 100,
+  severity?: "low" | "medium" | "high"
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(riskMapAlerts)
+    .where(
+      and(
+        eq(riskMapAlerts.unitId, unitId),
+        ...(severity ? [eq(riskMapAlerts.severity, severity)] : [])
+      )
+    )
+    .orderBy(desc(riskMapAlerts.createdAt))
+    .limit(limit);
 }

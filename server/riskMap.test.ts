@@ -11,6 +11,8 @@ function createAdminContext(): TrpcContext {
       name: "Test User",
       loginMethod: "manus",
       role: "admin",
+      registrationStatus: "approved",
+      sessionVersion: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
@@ -23,7 +25,7 @@ function createAdminContext(): TrpcContext {
   };
 }
 
-describe("riskMap", () => {
+describe.skipIf(!process.env.TEST_DATABASE_URL)("riskMap", () => {
   it("lists risk map areas", async () => {
     const ctx = createAdminContext();
     const caller = appRouter.createCaller(ctx);
@@ -63,8 +65,12 @@ describe("riskMap", () => {
     });
 
     if (created.length > 0) {
-      const level = await caller.riskMap.calculateAreaRiskLevel({ areaId: created[0].id });
-      expect(["Tolerável", "Moderado", "Substancial", "Intolerável"]).toContain(level);
+      const level = await caller.riskMap.calculateAreaRiskLevel({
+        areaId: created[0].id,
+      });
+      expect(["Tolerável", "Moderado", "Substancial", "Intolerável"]).toContain(
+        level
+      );
     }
   });
 

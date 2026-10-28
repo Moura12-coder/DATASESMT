@@ -46,10 +46,6 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,
@@ -72,7 +68,7 @@ export function useAuth(options?: UseAuthOptions) {
     if (window.location.pathname === redirectPath) return;
 
     // Redirect to home page for unauthenticated users
-    window.location.href = "/"
+    window.location.href = "/";
   }, [
     redirectOnUnauthenticated,
     redirectPath,
