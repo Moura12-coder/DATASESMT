@@ -77,9 +77,21 @@ O build de produção, a checagem de tipos e os testes sem banco foram executado
 
 ## Limites ainda existentes
 
-- Os módulos `phase1Complete`, `remainingFeatures` e partes de `phase1Features` ainda contêm demonstrações, objetos em memória e retornos simulados. As páginas Moura e alguns painéis alternativos também têm dados demonstrativos. Não use esses resultados como evidência técnica ou operacional.
+- Há protótipos não operacionais em `remainingFeatures` e serviços avançados. As rotas públicas de painéis Moura/demonstração foram encaminhadas aos módulos reais; os arquivos antigos permanecem como código legado.
 - A migração, o envio de email, o armazenamento e os fluxos completos com banco real precisam ser verificados em homologação. Os testes desta entrega não substituem essa etapa.
 - A geração de documentos precisa de revisão de um profissional responsável antes de assinatura ou uso. Nenhum indicador é apresentado como certificação automática de conformidade.
 - As mudanças não implementam segregação completa por organização, matriz de permissões por unidade, auditoria integral nem transmissão oficial ao eSocial.
 
 O painel Analytics agora usa consultas reais, não inventa benchmark e exporta CSV efetivo. O gráfico de incidentes do painel principal usa registros reais; o indicador de exames mede cobertura básica registrada, não conformidade legal.
+
+
+## Continuação: fluxos persistentes e integração MySQL
+
+- `phase1Complete` agora reutiliza serviços persistentes: GHE, avaliações, laudos com histórico transacional, afastamentos, consultas e relatórios baseados no banco. Os eventos eSocial são rascunhos persistidos, sem transmissão nem protocolo inventado.
+- As telas de avaliações e laudos consultam dados salvos, permitem selecionar a unidade e atualizam as listas após alterações. As rotas Moura e os painéis alternativos de demonstração encaminham para os módulos reais.
+- A migração 0014 adiciona os tipos PGR/PPRA aos registros de laudos e permite validade final não definida. A aprovação administrativa fica identificada pelo usuário autenticado e não representa assinatura digital certificada.
+- O pipeline foi corrigido para usar uma única definição de versão do pnpm. Há um job adicional com MySQL 8 descartável, migrações, fixtures e testes de persistência; ele inclui os 52 testes de banco legados e oito novos testes de integração.
+- O SQL das migrações 0000–0014 foi executado com sucesso em uma base MariaDB 10.11 descartável em modo bootstrap. O ambiente local bloqueia sockets Unix, portanto os testes pela conexão MySQL são executados no job remoto, não simulados como aprovados localmente.
+- Relatórios por unidade não misturam exames, treinamentos e custos de outras unidades. Os textos gerados deixaram de afirmar que receberam uma assinatura digital automaticamente.
+
+Continuam pendentes o transmissor oficial ao eSocial com certificado, a configuração dos serviços externos e os protótipos não montados em rotas operacionais, como `remainingFeatures`. Não considere a lista de funcionalidades demonstrativas do README uma comprovação de implementação completa.

@@ -3,10 +3,16 @@
  * Gestão de GHE, Avaliações Ambientais, Laudos, Matriz de Compatibilidade
  */
 
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, isNull } from "drizzle-orm";
 import { getDb } from "./db";
+import { TRPCError } from "@trpc/server";
 import {
+  companyUnits,
+  riskMapAreas,
   ghe,
+  environmentalAssessments,
+  technicalReports,
+  technicalReportsHistory,
   employeeGhe,
   gheExposureAgents,
   gheAuditLog,
@@ -31,6 +37,33 @@ export async function createGHE(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const [unit] = await db
+    .select({ id: companyUnits.id })
+    .from(companyUnits)
+    .where(eq(companyUnits.id, data.unitId))
+    .limit(1);
+  if (!unit)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Unidade não encontrada",
+    });
+  if (data.riskMapAreaId) {
+    const [area] = await db
+      .select({ id: riskMapAreas.id })
+      .from(riskMapAreas)
+      .where(
+        and(
+          eq(riskMapAreas.id, data.riskMapAreaId),
+          eq(riskMapAreas.unitId, data.unitId)
+        )
+      )
+      .limit(1);
+    if (!area)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Área não pertence à unidade informada",
+      });
+  }
   // Validar duplicação de código por unidade
   const existingGHE = await db
     .select()
@@ -82,6 +115,28 @@ export async function addEmployeeToGHE(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const [worker] = await db
+    .select()
+    .from(employees)
+    .where(eq(employees.id, data.employeeId))
+    .limit(1);
+  const [group] = await db
+    .select()
+    .from(ghe)
+    .where(eq(ghe.id, data.gheId))
+    .limit(1);
+  if (!worker || !group)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Funcionário ou GHE não encontrado",
+    });
+  if (worker.unitId !== group.unitId)
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Funcionário e GHE devem pertencer à mesma unidade",
+    });
+  if (data.endDate && data.endDate < data.startDate)
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Período inválido" });
   await db.insert(employeeGhe).values({
     employeeId: data.employeeId,
     gheId: data.gheId,
@@ -129,14 +184,22 @@ export async function addExposureAgent(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const [group] = await db
+    .select({ id: ghe.id })
+    .from(ghe)
+    .where(eq(ghe.id, data.gheId))
+    .limit(1);
+  if (!group)
+    throw new TRPCError({ code: "NOT_FOUND", message: "GHE não encontrado" });
   await db.insert(gheExposureAgents).values({
     gheId: data.gheId,
     agentType: data.agentType,
     agentName: data.agentName,
     riskLevel: data.riskLevel,
-    limiteTolerance: data.limiteTolerance
-      ? String(data.limiteTolerance)
-      : undefined,
+    limiteTolerance:
+      data.limiteTolerance !== undefined
+        ? String(data.limiteTolerance)
+        : undefined,
     unit: data.unit,
   } as any);
 
@@ -179,7 +242,9 @@ export async function getEmployeeCompatibility(employeeId: number) {
   const gheAssignments = await db
     .select()
     .from(employeeGhe)
-    .where(eq(employeeGhe.employeeId, employeeId));
+    .where(
+      and(eq(employeeGhe.employeeId, employeeId), isNull(employeeGhe.endDate))
+    );
 
   const gheIds = gheAssignments.map(a => a.gheId);
 
@@ -210,6 +275,21 @@ export async function getEmployeeCompatibility(employeeId: number) {
     .from(trainingRecords)
     .where(eq(trainingRecords.employeeId, employeeId));
 
+  const now = new Date();
+  const trained = trainings.some(
+    record =>
+      record.completionDate <= now &&
+      (!record.expiryDate || record.expiryDate >= now)
+  );
+  const examsUpToDate = exams_.some(
+    exam =>
+      exam.expirationDate &&
+      exam.expirationDate >= now &&
+      (exam.result === "Apto" || exam.result === "Apto com Restrições")
+  );
+  const episAvailable = epis.some(
+    delivery => !delivery.returnDate && delivery.deliveryDate <= now
+  );
   return {
     employee: employee[0],
     ghe: gheAssignments,
@@ -218,18 +298,11 @@ export async function getEmployeeCompatibility(employeeId: number) {
     epis,
     trainings,
     compatibility: {
-      trained: trainings.length > 0,
-      examsUpToDate: exams_.some(e => {
-        const expDate = e.expirationDate;
-        return expDate && new Date(expDate) > new Date();
-      }),
-      episAvailable: epis.length > 0,
-      isApt:
-        trainings.length > 0 &&
-        exams_.some(
-          e => e.expirationDate && new Date(e.expirationDate) > new Date()
-        ) &&
-        epis.length > 0,
+      trained,
+      examsUpToDate,
+      episAvailable,
+      isApt: trained && examsUpToDate && episAvailable,
+      requiresProfessionalReview: true,
     },
   };
 }
@@ -271,61 +344,85 @@ export async function createEnvironmentalAssessment(data: {
   responsible: string;
   notes?: string;
 }) {
-  // Nota: Seria necessário criar tabela environmental_assessments no schema
-  // Por enquanto, retornar estrutura
-  return {
-    id: Math.random(),
-    ...data,
-    status:
-      data.measurementValue <= data.limiteTolerance
-        ? "Conforme"
-        : "Não Conforme",
-    createdAt: new Date(),
-  };
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [group] = await db
+    .select()
+    .from(ghe)
+    .where(eq(ghe.id, data.gheId))
+    .limit(1);
+  if (!group)
+    throw new TRPCError({ code: "NOT_FOUND", message: "GHE não encontrado" });
+  const agentTypes = ["Químico", "Físico", "Biológico", "Ergonômico"] as const;
+  const agentType = agentTypes.find(type => type === data.agentType);
+  if (
+    !agentType ||
+    !Number.isFinite(data.measurementValue) ||
+    data.measurementValue < 0 ||
+    !Number.isFinite(data.limiteTolerance) ||
+    data.limiteTolerance <= 0
+  )
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Tipo de agente ou valores de medição inválidos",
+    });
+  const [insert] = await db
+    .insert(environmentalAssessments)
+    .values({
+      ...data,
+      unitId: group.unitId,
+      agentType,
+      measurementValue: String(data.measurementValue),
+      limiteTolerance: String(data.limiteTolerance),
+      status:
+        data.measurementValue > data.limiteTolerance
+          ? "Não Conforme"
+          : "Conforme",
+    });
+  const [created] = await db
+    .select()
+    .from(environmentalAssessments)
+    .where(eq(environmentalAssessments.id, insert.insertId));
+  return created;
 }
 
+export async function listEnvironmentalAssessments(gheId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db
+    .select()
+    .from(environmentalAssessments)
+    .where(eq(environmentalAssessments.gheId, gheId))
+    .orderBy(desc(environmentalAssessments.date));
+}
 export async function generatePPRAReport(unitId: number) {
   const db = await getDb();
-  if (!db) return null;
-
-  const gheList = await db.select().from(ghe).where(eq(ghe.unitId, unitId));
-
-  const report = {
+  if (!db) throw new Error("Database not available");
+  const groups = await db.select().from(ghe).where(eq(ghe.unitId, unitId));
+  const assessments = await db
+    .select()
+    .from(environmentalAssessments)
+    .where(eq(environmentalAssessments.unitId, unitId));
+  const nonConforming = assessments.filter(
+    row => row.status === "Não Conforme"
+  );
+  return {
     unitId,
     date: new Date(),
-    ghe: gheList,
-    assessments: [],
-    recommendations: [],
-    status: "Vigente",
+    ghe: groups,
+    assessments,
+    gheCount: groups.length,
+    assessmentCount: assessments.length,
+    nonConformingCount: nonConforming.length,
+    recommendations: nonConforming.map(
+      row => `Revisar controles do agente ${row.agentName} no GHE ${row.gheId}`
+    ),
+    status: nonConforming.length
+      ? "Requer Ação"
+      : assessments.length
+        ? "Sem excedências registradas"
+        : "Sem avaliações",
   };
-
-  return report;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GESTÃO DE LAUDOS TÉCNICOS
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface TechnicalReport {
-  id: number;
-  unitId: number;
-  type:
-    | "LTCAT"
-    | "PPP"
-    | "Laudo Ambiental"
-    | "Laudo Ergonômico"
-    | "PPRA"
-    | "PGR";
-  title: string;
-  revision: number;
-  author: string;
-  approver?: string;
-  status: "Rascunho" | "Aguardando Aprovação" | "Aprovado" | "Vigente";
-  validFrom: Date;
-  validUntil?: Date;
-  fileUrl?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export async function createTechnicalReport(data: {
@@ -343,45 +440,128 @@ export async function createTechnicalReport(data: {
   validUntil?: Date;
   fileUrl?: string;
 }) {
-  // Seria necessário criar tabela technical_reports no schema
-  return {
-    id: Math.random(),
-    ...data,
-    revision: 1,
-    status: "Rascunho" as const,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (data.validUntil && data.validUntil < data.validFrom)
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A validade deve terminar após a data inicial",
+    });
+  return db.transaction(async tx => {
+    const [result] = await tx
+      .insert(technicalReports)
+      .values({
+        ...data,
+        validUntil: data.validUntil ?? null,
+        status: "Rascunho",
+      });
+    await tx
+      .insert(technicalReportsHistory)
+      .values({
+        reportId: result.insertId,
+        version: 1,
+        status: "Rascunho",
+        notes: "Criação do laudo",
+      });
+    const [record] = await tx
+      .select()
+      .from(technicalReports)
+      .where(eq(technicalReports.id, result.insertId));
+    return { ...record, revision: 1 };
+  });
 }
-
+export async function listTechnicalReports(unitId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db
+    .select()
+    .from(technicalReports)
+    .where(eq(technicalReports.unitId, unitId))
+    .orderBy(desc(technicalReports.createdAt));
+  if (!rows.length) return [];
+  const versions = await db
+    .select({
+      reportId: technicalReportsHistory.reportId,
+      revision: sql<number>`max(${technicalReportsHistory.version})`,
+    })
+    .from(technicalReportsHistory)
+    .where(
+      inArray(
+        technicalReportsHistory.reportId,
+        rows.map(row => row.id)
+      )
+    )
+    .groupBy(technicalReportsHistory.reportId);
+  return rows.map(row => ({
+    ...row,
+    revision: Number(
+      versions.find(version => version.reportId === row.id)?.revision ?? 1
+    ),
+  }));
+}
 export async function approveTechnicalReport(
   reportId: number,
   approver: string
 ) {
-  return {
-    success: true,
-    status: "Aprovado",
-    approver,
-    approvedAt: new Date(),
-  };
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const [report] = await tx
+      .select()
+      .from(technicalReports)
+      .where(eq(technicalReports.id, reportId))
+      .for("update");
+    if (!report)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Laudo não encontrado",
+      });
+    if (report.status === "Aprovado" || report.status === "Vigente")
+      throw new TRPCError({ code: "CONFLICT", message: "Laudo já aprovado" });
+    const [last] = await tx
+      .select({ version: technicalReportsHistory.version })
+      .from(technicalReportsHistory)
+      .where(eq(technicalReportsHistory.reportId, reportId))
+      .orderBy(desc(technicalReportsHistory.version))
+      .limit(1);
+    const approvedAt = new Date();
+    await tx
+      .update(technicalReports)
+      .set({ status: "Aprovado", signedBy: approver, updatedAt: approvedAt })
+      .where(eq(technicalReports.id, reportId));
+    await tx
+      .insert(technicalReportsHistory)
+      .values({
+        reportId,
+        version: (last?.version ?? 0) + 1,
+        status: "Aprovado",
+        approver,
+        approvedAt,
+        notes: "Aprovação administrativa; não constitui assinatura digital",
+      });
+    return {
+      success: true,
+      id: reportId,
+      status: "Aprovado" as const,
+      approver,
+      approvedAt,
+    };
+  });
 }
-
 export async function getTechnicalReportHistory(reportId: number) {
-  // Retornar histórico de revisões
-  return [
-    {
-      revision: 1,
-      status: "Rascunho",
-      date: new Date(),
-      author: "Engenheiro SST",
-    },
-    {
-      revision: 2,
-      status: "Aprovado",
-      date: new Date(),
-      author: "Gerente",
-    },
-  ];
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const records = await db
+    .select()
+    .from(technicalReportsHistory)
+    .where(eq(technicalReportsHistory.reportId, reportId))
+    .orderBy(desc(technicalReportsHistory.version));
+  return records.map(row => ({
+    ...row,
+    revision: row.version,
+    date: row.createdAt,
+    author: row.approver,
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

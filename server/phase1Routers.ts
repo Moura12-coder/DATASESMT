@@ -65,15 +65,17 @@ export const phase1Router = router({
       .query(({ input }) => phase1.getExposureAgents(input.gheId)),
 
     update: protectedProcedure
-      .input(z.object({
-        gheId: z.number(),
-        code: z.string().optional(),
-        name: z.string().optional(),
-        description: z.string().optional(),
-        location: z.string().optional(),
-        responsible: z.string().optional(),
-        status: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          gheId: z.number(),
+          code: z.string().optional(),
+          name: z.string().optional(),
+          description: z.string().optional(),
+          location: z.string().optional(),
+          responsible: z.string().optional(),
+          status: z.string().optional(),
+        })
+      )
       .mutation(({ input }) => {
         const { gheId, ...data } = input;
         return phase1.updateGHE(gheId, data);
@@ -105,6 +107,9 @@ export const phase1Router = router({
 
   // ─── AVALIAÇÕES AMBIENTAIS (NR-09) ──────────────────────────────────────────
   environmentalAssessments: router({
+    list: protectedProcedure
+      .input(z.object({ gheId: z.number().int().positive() }))
+      .query(({ input }) => phase1.listEnvironmentalAssessments(input.gheId)),
     create: protectedProcedure
       .input(
         z.object({
@@ -119,9 +124,7 @@ export const phase1Router = router({
           notes: z.string().optional(),
         })
       )
-      .mutation(({ input }) =>
-        phase1.createEnvironmentalAssessment(input)
-      ),
+      .mutation(({ input }) => phase1.createEnvironmentalAssessment(input)),
 
     generatePPRA: protectedProcedure
       .input(z.object({ unitId: z.number() }))
@@ -130,6 +133,9 @@ export const phase1Router = router({
 
   // ─── GESTÃO DE LAUDOS ───────────────────────────────────────────────────────
   technicalReports: router({
+    list: protectedProcedure
+      .input(z.object({ unitId: z.number().int().positive() }))
+      .query(({ input }) => phase1.listTechnicalReports(input.unitId)),
     create: protectedProcedure
       .input(
         z.object({
@@ -158,8 +164,11 @@ export const phase1Router = router({
           approver: z.string(),
         })
       )
-      .mutation(({ input }) =>
-        phase1.approveTechnicalReport(input.reportId, input.approver)
+      .mutation(({ input, ctx }) =>
+        phase1.approveTechnicalReport(
+          input.reportId,
+          ctx.user.name || ctx.user.email || String(ctx.user.id)
+        )
       ),
 
     getHistory: protectedProcedure

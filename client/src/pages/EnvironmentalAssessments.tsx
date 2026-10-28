@@ -1,20 +1,49 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Plus, AlertTriangle, CheckCircle, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function EnvironmentalAssessments() {
-  const [unitId] = useState(1);
+  const [unitId, setUnitId] = useState(0);
+  const { data: units = [] } = trpc.units.list.useQuery();
+  const utils = trpc.useUtils();
   const [selectedGHE, setSelectedGHE] = useState<number | undefined>(undefined);
   const [newAssessmentForm, setNewAssessmentForm] = useState({
     agentType: "Químico",
@@ -27,31 +56,46 @@ export default function EnvironmentalAssessments() {
   });
 
   // Queries
-  const { data: gheList } = trpc.phase1.ghe.list.useQuery({ unitId });
-  const { data: assessments } = selectedGHE
-    ? { data: [] as any[] }
-    : { data: [] as any[] };
-  const { data: ppraReport } = trpc.phase1.environmentalAssessments.generatePPRA.useQuery({ unitId });
+  const { data: gheList } = trpc.phase1.ghe.list.useQuery(
+    { unitId },
+    { enabled: !!unitId }
+  );
+  const { data: assessments = [] } =
+    trpc.phase1.environmentalAssessments.list.useQuery(
+      { gheId: selectedGHE || 0 },
+      { enabled: !!selectedGHE }
+    );
+  const { data: ppraReport } =
+    trpc.phase1.environmentalAssessments.generatePPRA.useQuery(
+      { unitId },
+      { enabled: !!unitId }
+    );
 
   // Mutations
-  const createAssessmentMutation = trpc.phase1.environmentalAssessments.create.useMutation({
-    onSuccess: () => {
-      toast.success("Avaliação ambiental registrada");
-      setNewAssessmentForm({
-        agentType: "Químico",
-        agentName: "",
-        measurementValue: "",
-        unit: "",
-        limiteTolerance: "",
-        responsible: "",
-        notes: "",
-      });
-    },
-    onError: (error) => toast.error(`Erro: ${error.message}`),
-  });
+  const createAssessmentMutation =
+    trpc.phase1.environmentalAssessments.create.useMutation({
+      onSuccess: () => {
+        toast.success("Avaliação ambiental registrada");
+        utils.phase1.environmentalAssessments.invalidate();
+        setNewAssessmentForm({
+          agentType: "Químico",
+          agentName: "",
+          measurementValue: "",
+          unit: "",
+          limiteTolerance: "",
+          responsible: "",
+          notes: "",
+        });
+      },
+      onError: error => toast.error(`Erro: ${error.message}`),
+    });
 
   const handleCreateAssessment = () => {
-    if (!selectedGHE || !newAssessmentForm.agentName || !newAssessmentForm.measurementValue) {
+    if (
+      !selectedGHE ||
+      !newAssessmentForm.agentName ||
+      !newAssessmentForm.measurementValue
+    ) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -62,7 +106,9 @@ export default function EnvironmentalAssessments() {
       agentName: newAssessmentForm.agentName,
       measurementValue: Number(newAssessmentForm.measurementValue),
       unit: newAssessmentForm.unit,
-      limiteTolerance: newAssessmentForm.limiteTolerance ? Number(newAssessmentForm.limiteTolerance) : 0,
+      limiteTolerance: newAssessmentForm.limiteTolerance
+        ? Number(newAssessmentForm.limiteTolerance)
+        : 0,
       date: new Date(),
       responsible: newAssessmentForm.responsible,
       notes: newAssessmentForm.notes,
@@ -96,26 +142,50 @@ export default function EnvironmentalAssessments() {
   };
 
   // Preparar dados para gráfico
-  const chartData = (assessments as any[])?.map((a: any) => ({
-    date: new Date(a.date).toLocaleDateString("pt-BR"),
-    value: a.measurementValue,
-    limite: a.limiteTolerance || 0,
-    agent: a.agentName,
-  })) || [];
+  const chartData =
+    (assessments as any[])?.map((a: any) => ({
+      date: new Date(a.date).toLocaleDateString("pt-BR"),
+      value: a.measurementValue,
+      limite: a.limiteTolerance || 0,
+      agent: a.agentName,
+    })) || [];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Avaliações Ambientais</h1>
-        <p className="text-gray-600">Medições de Agentes Químicos, Físicos, Biológicos (NR-09)</p>
+        <p className="text-gray-600">
+          Medições de Agentes Químicos, Físicos, Biológicos (NR-09)
+        </p>
       </div>
 
       <Alert className="bg-blue-50 border-blue-200">
         <AlertDescription className="text-blue-800">
-          Registre as medições de agentes ambientais e compare com os Limites de Tolerância (LT). Os dados são centralizados e disponibilizados para gerar automaticamente documentos de SST (PGR, PCMSO, LTCAT, LTIP) no menu Documentos de SST.
+          Registre as medições de agentes ambientais e compare com os Limites de
+          Tolerância (LT). Os dados são centralizados e disponibilizados para
+          gerar automaticamente documentos de SST (PGR, PCMSO, LTCAT, LTIP) no
+          menu Documentos de SST.
         </AlertDescription>
       </Alert>
 
+      <label className="block text-sm">
+        Unidade
+        <select
+          className="block border rounded p-2 mt-2"
+          value={unitId}
+          onChange={e => {
+            setUnitId(Number(e.target.value));
+            setSelectedGHE(undefined);
+          }}
+        >
+          <option value={0}>Selecione uma unidade</option>
+          {units.map(unit => (
+            <option key={unit.id} value={unit.id}>
+              {unit.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <Tabs defaultValue="assessments" className="w-full">
         <TabsList>
           <TabsTrigger value="assessments">Avaliações</TabsTrigger>
@@ -126,10 +196,14 @@ export default function EnvironmentalAssessments() {
         {/* TAB: Avaliações */}
         <TabsContent value="assessments" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Medições de Agentes Ambientais</h2>
+            <h2 className="text-xl font-semibold">
+              Medições de Agentes Ambientais
+            </h2>
             <Dialog>
               <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" /> Nova Avaliação</Button>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Nova Avaliação
+                </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
@@ -138,12 +212,15 @@ export default function EnvironmentalAssessments() {
                 <div className="space-y-4">
                   <div>
                     <Label>GHE</Label>
-                    <Select value={selectedGHE ? selectedGHE.toString() : ""} onValueChange={(v) => setSelectedGHE(Number(v))}>
+                    <Select
+                      value={selectedGHE ? selectedGHE.toString() : ""}
+                      onValueChange={v => setSelectedGHE(Number(v))}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um GHE" />
                       </SelectTrigger>
                       <SelectContent>
-                        {gheList?.map((ghe) => (
+                        {gheList?.map(ghe => (
                           <SelectItem key={ghe.id} value={ghe.id.toString()}>
                             {ghe.name}
                           </SelectItem>
@@ -156,14 +233,21 @@ export default function EnvironmentalAssessments() {
                     <Label>Tipo de Agente</Label>
                     <Select
                       value={newAssessmentForm.agentType}
-                      onValueChange={(v) => setNewAssessmentForm({ ...newAssessmentForm, agentType: v })}
+                      onValueChange={v =>
+                        setNewAssessmentForm({
+                          ...newAssessmentForm,
+                          agentType: v,
+                        })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Químico">Químico</SelectItem>
-                        <SelectItem value="Físico">Físico (Ruído, Calor, Radiação)</SelectItem>
+                        <SelectItem value="Físico">
+                          Físico (Ruído, Calor, Radiação)
+                        </SelectItem>
                         <SelectItem value="Biológico">Biológico</SelectItem>
                         <SelectItem value="Ergonômico">Ergonômico</SelectItem>
                       </SelectContent>
@@ -175,7 +259,12 @@ export default function EnvironmentalAssessments() {
                     <Input
                       placeholder="Ex: Benzeno, Ruído, Calor"
                       value={newAssessmentForm.agentName}
-                      onChange={(e) => setNewAssessmentForm({ ...newAssessmentForm, agentName: e.target.value })}
+                      onChange={e =>
+                        setNewAssessmentForm({
+                          ...newAssessmentForm,
+                          agentName: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -187,7 +276,12 @@ export default function EnvironmentalAssessments() {
                         step="0.01"
                         placeholder="50"
                         value={newAssessmentForm.measurementValue}
-                        onChange={(e) => setNewAssessmentForm({ ...newAssessmentForm, measurementValue: e.target.value })}
+                        onChange={e =>
+                          setNewAssessmentForm({
+                            ...newAssessmentForm,
+                            measurementValue: e.target.value,
+                          })
+                        }
                       />
                     </div>
                     <div>
@@ -195,7 +289,12 @@ export default function EnvironmentalAssessments() {
                       <Input
                         placeholder="ppm, mg/m³, dB"
                         value={newAssessmentForm.unit}
-                        onChange={(e) => setNewAssessmentForm({ ...newAssessmentForm, unit: e.target.value })}
+                        onChange={e =>
+                          setNewAssessmentForm({
+                            ...newAssessmentForm,
+                            unit: e.target.value,
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -207,7 +306,12 @@ export default function EnvironmentalAssessments() {
                       step="0.01"
                       placeholder="100"
                       value={newAssessmentForm.limiteTolerance}
-                      onChange={(e) => setNewAssessmentForm({ ...newAssessmentForm, limiteTolerance: e.target.value })}
+                      onChange={e =>
+                        setNewAssessmentForm({
+                          ...newAssessmentForm,
+                          limiteTolerance: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -216,7 +320,12 @@ export default function EnvironmentalAssessments() {
                     <Input
                       placeholder="Engenheiro SST"
                       value={newAssessmentForm.responsible}
-                      onChange={(e) => setNewAssessmentForm({ ...newAssessmentForm, responsible: e.target.value })}
+                      onChange={e =>
+                        setNewAssessmentForm({
+                          ...newAssessmentForm,
+                          responsible: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -225,12 +334,23 @@ export default function EnvironmentalAssessments() {
                     <Input
                       placeholder="Notas adicionais"
                       value={newAssessmentForm.notes}
-                      onChange={(e) => setNewAssessmentForm({ ...newAssessmentForm, notes: e.target.value })}
+                      onChange={e =>
+                        setNewAssessmentForm({
+                          ...newAssessmentForm,
+                          notes: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
-                  <Button onClick={handleCreateAssessment} disabled={createAssessmentMutation.isPending} className="w-full">
-                    {createAssessmentMutation.isPending ? "Registrando..." : "Registrar Avaliação"}
+                  <Button
+                    onClick={handleCreateAssessment}
+                    disabled={createAssessmentMutation.isPending}
+                    className="w-full"
+                  >
+                    {createAssessmentMutation.isPending
+                      ? "Registrando..."
+                      : "Registrar Avaliação"}
                   </Button>
                 </div>
               </DialogContent>
@@ -244,11 +364,15 @@ export default function EnvironmentalAssessments() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="font-semibold">{assessment.agentName}</p>
-                      <p className="text-sm text-gray-600">{assessment.agentType}</p>
+                      <p className="text-sm text-gray-600">
+                        {assessment.agentType}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusIcon(assessment.status)}
-                      <Badge className={getStatusColor(assessment.status)}>{assessment.status}</Badge>
+                      <Badge className={getStatusColor(assessment.status)}>
+                        {assessment.status}
+                      </Badge>
                     </div>
                   </div>
 
@@ -267,13 +391,17 @@ export default function EnvironmentalAssessments() {
                     </div>
                     <div>
                       <p className="text-gray-600">Data</p>
-                      <p className="font-semibold">{new Date(assessment.date).toLocaleDateString("pt-BR")}</p>
+                      <p className="font-semibold">
+                        {new Date(assessment.date).toLocaleDateString("pt-BR")}
+                      </p>
                     </div>
                   </div>
 
                   {assessment.notes && (
                     <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm text-gray-600">{assessment.notes}</p>
+                      <p className="text-sm text-gray-600">
+                        {assessment.notes}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -288,7 +416,9 @@ export default function EnvironmentalAssessments() {
             <Card>
               <CardHeader>
                 <CardTitle>Relatório de Avaliações</CardTitle>
-                <CardDescription>Programa de Prevenção de Riscos Ambientais</CardDescription>
+                <CardDescription>
+                  Programa de Prevenção de Riscos Ambientais
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -298,20 +428,26 @@ export default function EnvironmentalAssessments() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Data</p>
-                    <p className="font-semibold">{new Date(ppraReport.date).toLocaleDateString("pt-BR")}</p>
+                    <p className="font-semibold">
+                      {new Date(ppraReport.date).toLocaleDateString("pt-BR")}
+                    </p>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t">
                   <p className="text-sm text-gray-600 mb-2">GHEs Avaliados</p>
-                  <p className="font-semibold">{ppraReport.ghe?.length || 0} GHEs</p>
+                  <p className="font-semibold">
+                    {ppraReport.ghe?.length || 0} GHEs
+                  </p>
                 </div>
               </CardContent>
             </Card>
           ) : (
             <Card className="bg-gray-50">
               <CardContent className="pt-6 text-center text-gray-600">
-                Nenhuma avaliação registrada ainda. Registre avaliações ambientais para visualizar o relatório e gerar documentos de SST.
+                Nenhuma avaliação registrada ainda. Registre avaliações
+                ambientais para visualizar o relatório e gerar documentos de
+                SST.
               </CardContent>
             </Card>
           )}
@@ -335,8 +471,19 @@ export default function EnvironmentalAssessments() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="value" stroke="#3b82f6" name="Valor Medido" />
-                    <Line type="monotone" dataKey="limite" stroke="#ef4444" name="Limite de Tolerância" strokeDasharray="5 5" />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#3b82f6"
+                      name="Valor Medido"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="limite"
+                      stroke="#ef4444"
+                      name="Limite de Tolerância"
+                      strokeDasharray="5 5"
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>

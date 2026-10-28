@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
 /**
  * Interface para dados de assinatura
@@ -15,10 +15,7 @@ export interface SignatureData {
  * Gera hash SHA-256 de um documento
  */
 export function generateDocumentHash(content: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(content)
-    .digest('hex');
+  return crypto.createHash("sha256").update(content).digest("hex");
 }
 
 /**
@@ -31,7 +28,7 @@ export function createDigitalSignature(
   signerEmail?: string
 ): SignatureData {
   const documentHash = generateDocumentHash(content);
-  
+
   return {
     signerName,
     signerRole,
@@ -62,11 +59,11 @@ ASSINATURA DIGITAL
 
 Assinado por: ${signature.signerName}
 Cargo/Função: ${signature.signerRole}
-${signature.signerEmail ? `Email: ${signature.signerEmail}\n` : ''}Data/Hora: ${signature.timestamp.toLocaleString('pt-BR')}
+${signature.signerEmail ? `Email: ${signature.signerEmail}\n` : ""}Data/Hora: ${signature.timestamp.toLocaleString("pt-BR")}
 Hash do Documento: ${signature.documentHash}
 
-Este documento foi assinado digitalmente e possui validade legal conforme
-Lei nº 14.063, de 23 de setembro de 2020.
+Registro de integridade por hash. Não comprova a identidade do signatário
+e não constitui assinatura digital certificada.
 
 Certificado de Autenticidade: ${generateCertificateNumber()}
 ═════════════════════════════════════════════════════════════════════════════
@@ -78,7 +75,7 @@ Certificado de Autenticidade: ${generateCertificateNumber()}
  */
 export function generateCertificateNumber(): string {
   const timestamp = Date.now().toString();
-  const random = crypto.randomBytes(8).toString('hex');
+  const random = crypto.randomBytes(8).toString("hex");
   return `${timestamp}-${random}`.toUpperCase();
 }
 
@@ -91,8 +88,13 @@ export function createTrustedTimestampSignature(
   signerRole: string,
   signerEmail?: string
 ): SignatureData & { certificateNumber: string } {
-  const signature = createDigitalSignature(content, signerName, signerRole, signerEmail);
-  
+  const signature = createDigitalSignature(
+    content,
+    signerName,
+    signerRole,
+    signerEmail
+  );
+
   return {
     ...signature,
     certificateNumber: generateCertificateNumber(),
@@ -107,8 +109,10 @@ export function validateMultipleSignatures(
   signatures: SignatureData[]
 ): { valid: boolean; invalidSignatures: number } {
   const documentHash = generateDocumentHash(content);
-  const invalidCount = signatures.filter(sig => sig.documentHash !== documentHash).length;
-  
+  const invalidCount = signatures.filter(
+    sig => sig.documentHash !== documentHash
+  ).length;
+
   return {
     valid: invalidCount === 0,
     invalidSignatures: invalidCount,
@@ -120,7 +124,12 @@ export function validateMultipleSignatures(
  */
 export interface SignatureChain {
   documentHash: string;
-  signatures: Array<SignatureData & { order: number; approvalStatus: 'Aprovado' | 'Rejeitado' | 'Pendente' }>;
+  signatures: Array<
+    SignatureData & {
+      order: number;
+      approvalStatus: "Aprovado" | "Rejeitado" | "Pendente";
+    }
+  >;
   createdAt: Date;
   completedAt?: Date;
 }
@@ -137,21 +146,29 @@ export function addSignatureToChain(
   chain: SignatureChain,
   signerName: string,
   signerRole: string,
-  approvalStatus: 'Aprovado' | 'Rejeitado' | 'Pendente',
+  approvalStatus: "Aprovado" | "Rejeitado" | "Pendente",
   signerEmail?: string
 ): SignatureChain {
-  const signature = createDigitalSignature('', signerName, signerRole, signerEmail);
-  
+  const signature = createDigitalSignature(
+    "",
+    signerName,
+    signerRole,
+    signerEmail
+  );
+
   chain.signatures.push({
     ...signature,
     order: chain.signatures.length + 1,
     approvalStatus,
   });
-  
-  if (approvalStatus === 'Aprovado' && chain.signatures.every(s => s.approvalStatus !== 'Pendente')) {
+
+  if (
+    approvalStatus === "Aprovado" &&
+    chain.signatures.every(s => s.approvalStatus !== "Pendente")
+  ) {
     chain.completedAt = new Date();
   }
-  
+
   return chain;
 }
 
@@ -163,25 +180,29 @@ export function generateSignatureAuditReport(chain: SignatureChain): string {
 RELATÓRIO DE AUDITORIA DE ASSINATURA DIGITAL
 
 Hash do Documento: ${chain.documentHash}
-Data de Criação: ${chain.createdAt.toLocaleString('pt-BR')}
-${chain.completedAt ? `Data de Conclusão: ${chain.completedAt.toLocaleString('pt-BR')}\n` : ''}
+Data de Criação: ${chain.createdAt.toLocaleString("pt-BR")}
+${chain.completedAt ? `Data de Conclusão: ${chain.completedAt.toLocaleString("pt-BR")}\n` : ""}
 
 CADEIA DE ASSINATURAS:
-${chain.signatures.map((sig, idx) => `
+${chain.signatures
+  .map(
+    (sig, idx) => `
 ${idx + 1}. ${sig.signerName}
    Cargo: ${sig.signerRole}
-   Email: ${sig.signerEmail || 'Não informado'}
+   Email: ${sig.signerEmail || "Não informado"}
    Status: ${sig.approvalStatus}
-   Data/Hora: ${sig.timestamp.toLocaleString('pt-BR')}
+   Data/Hora: ${sig.timestamp.toLocaleString("pt-BR")}
    Hash: ${sig.documentHash}
-`).join('\n')}
+`
+  )
+  .join("\n")}
 
 RESUMO:
 - Total de Assinantes: ${chain.signatures.length}
-- Aprovações: ${chain.signatures.filter(s => s.approvalStatus === 'Aprovado').length}
-- Rejeições: ${chain.signatures.filter(s => s.approvalStatus === 'Rejeitado').length}
-- Pendentes: ${chain.signatures.filter(s => s.approvalStatus === 'Pendente').length}
-- Status Final: ${chain.completedAt ? 'Concluído' : 'Em Processamento'}
+- Aprovações: ${chain.signatures.filter(s => s.approvalStatus === "Aprovado").length}
+- Rejeições: ${chain.signatures.filter(s => s.approvalStatus === "Rejeitado").length}
+- Pendentes: ${chain.signatures.filter(s => s.approvalStatus === "Pendente").length}
+- Status Final: ${chain.completedAt ? "Concluído" : "Em Processamento"}
 
 Este relatório foi gerado automaticamente pelo sistema de assinatura digital.
 `;

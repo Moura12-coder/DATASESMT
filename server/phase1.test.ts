@@ -150,12 +150,14 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
 
         expect(result).toBeDefined();
         expect(result?.unitId).toBe(1);
-        expect(result?.status).toBe("Vigente");
+        expect(result?.assessmentCount).toBeGreaterThan(0);
+        expect(result?.status).toBe("Sem excedências registradas");
       });
     });
 
     // ─── GESTÃO DE LAUDOS ───────────────────────────────────────────────────────
     describe("Gestão de Laudos Técnicos", () => {
+      let createdReportId: number;
       it("creates technical report", async () => {
         const ctx = createAdminContext();
         const caller = appRouter.createCaller(ctx);
@@ -170,6 +172,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         });
 
         expect(result).toBeDefined();
+        createdReportId = result.id;
         expect(result.type).toBe("LTCAT");
         expect(result.status).toBe("Rascunho");
         expect(result.revision).toBe(1);
@@ -180,7 +183,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         const caller = appRouter.createCaller(ctx);
 
         const result = await caller.phase1.technicalReports.approve({
-          reportId: 1,
+          reportId: createdReportId,
           approver: "Gerente de SST",
         });
 
@@ -193,7 +196,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         const caller = appRouter.createCaller(ctx);
 
         const result = await caller.phase1.technicalReports.getHistory({
-          reportId: 1,
+          reportId: createdReportId,
         });
 
         expect(Array.isArray(result)).toBe(true);

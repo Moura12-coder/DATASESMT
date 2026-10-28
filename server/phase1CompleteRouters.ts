@@ -12,14 +12,21 @@ export const phase1CompleteRouter = router({
   // ========================================================================
   ghe: router({
     create: protectedProcedure
-      .input(z.object({
-        unitId: z.number(),
-        code: z.string(),
-        name: z.string(),
-        description: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          unitId: z.number(),
+          code: z.string(),
+          name: z.string(),
+          description: z.string().optional(),
+        })
+      )
       .mutation(async ({ input }) => {
-        return await phase1.createGHE(input.unitId, input.code, input.name, input.description);
+        return await phase1.createGHE(
+          input.unitId,
+          input.code,
+          input.name,
+          input.description
+        );
       }),
 
     list: protectedProcedure
@@ -40,16 +47,18 @@ export const phase1CompleteRouter = router({
   // ========================================================================
   environmentalAssessments: router({
     record: protectedProcedure
-      .input(z.object({
-        gheId: z.number(),
-        agentType: z.string(),
-        agentName: z.string(),
-        measurementValue: z.number(),
-        limiteTolerance: z.number(),
-        unit: z.string(),
-        date: z.date(),
-      }))
-      .mutation(async ({ input }) => {
+      .input(
+        z.object({
+          gheId: z.number(),
+          agentType: z.string(),
+          agentName: z.string(),
+          measurementValue: z.number(),
+          limiteTolerance: z.number(),
+          unit: z.string(),
+          date: z.date(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
         return await phase1.recordEnvironmentalAssessment(
           input.gheId,
           input.agentType,
@@ -57,7 +66,8 @@ export const phase1CompleteRouter = router({
           input.measurementValue,
           input.limiteTolerance,
           input.unit,
-          input.date
+          input.date,
+          ctx.user.name || String(ctx.user.id)
         );
       }),
 
@@ -79,14 +89,23 @@ export const phase1CompleteRouter = router({
   // ========================================================================
   technicalReports: router({
     create: protectedProcedure
-      .input(z.object({
-        unitId: z.number(),
-        type: z.enum(["LTCAT", "PPP", "PPRA", "PGR", "Laudo Ergonômico", "Laudo Ambiental"]),
-        title: z.string(),
-        author: z.string(),
-        validFrom: z.date(),
-        validUntil: z.date(),
-      }))
+      .input(
+        z.object({
+          unitId: z.number(),
+          type: z.enum([
+            "LTCAT",
+            "PPP",
+            "PPRA",
+            "PGR",
+            "Laudo Ergonômico",
+            "Laudo Ambiental",
+          ]),
+          title: z.string(),
+          author: z.string(),
+          validFrom: z.date(),
+          validUntil: z.date(),
+        })
+      )
       .mutation(async ({ input }) => {
         return await phase1.createTechnicalReport(
           input.unitId,
@@ -99,12 +118,17 @@ export const phase1CompleteRouter = router({
       }),
 
     approve: protectedProcedure
-      .input(z.object({
-        reportId: z.number(),
-        approver: z.string(),
-      }))
-      .mutation(async ({ input }) => {
-        return await phase1.approveTechnicalReport(input.reportId, input.approver);
+      .input(
+        z.object({
+          reportId: z.number(),
+          approver: z.string(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        return await phase1.approveTechnicalReport(
+          input.reportId,
+          ctx.user.name || ctx.user.email || String(ctx.user.id)
+        );
       }),
 
     getHistory: protectedProcedure
@@ -125,12 +149,17 @@ export const phase1CompleteRouter = router({
   // ========================================================================
   compatibility: router({
     checkEmployee: protectedProcedure
-      .input(z.object({
-        employeeId: z.number(),
-        sectorId: z.number(),
-      }))
+      .input(
+        z.object({
+          employeeId: z.number(),
+          sectorId: z.number(),
+        })
+      )
       .query(async ({ input }) => {
-        return await phase1.checkEmployeeCompatibility(input.employeeId, input.sectorId);
+        return await phase1.checkEmployeeCompatibility(
+          input.employeeId,
+          input.sectorId
+        );
       }),
 
     getMatrix: protectedProcedure
@@ -145,14 +174,16 @@ export const phase1CompleteRouter = router({
   // ========================================================================
   absences: router({
     record: protectedProcedure
-      .input(z.object({
-        employeeId: z.number(),
-        type: z.enum(["CAT", "INSS", "Licença", "Suspensão"]),
-        startDate: z.date(),
-        endDate: z.date(),
-        reason: z.string(),
-        catNumber: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          employeeId: z.number(),
+          type: z.enum(["CAT", "INSS", "Licença", "Suspensão"]),
+          startDate: z.date(),
+          endDate: z.date(),
+          reason: z.string(),
+          catNumber: z.string().optional(),
+        })
+      )
       .mutation(async ({ input }) => {
         return await phase1.recordAbsence(
           input.employeeId,
@@ -171,13 +202,19 @@ export const phase1CompleteRouter = router({
       }),
 
     calculateImpact: protectedProcedure
-      .input(z.object({
-        unitId: z.number(),
-        startDate: z.date(),
-        endDate: z.date(),
-      }))
+      .input(
+        z.object({
+          unitId: z.number(),
+          startDate: z.date(),
+          endDate: z.date(),
+        })
+      )
       .query(async ({ input }) => {
-        return await phase1.calculateAbsenceImpact(input.unitId, input.startDate, input.endDate);
+        return await phase1.calculateAbsenceImpact(
+          input.unitId,
+          input.startDate,
+          input.endDate
+        );
       }),
   }),
 
@@ -204,13 +241,19 @@ export const phase1CompleteRouter = router({
       }),
 
     generateAccidents: protectedProcedure
-      .input(z.object({
-        unitId: z.number(),
-        startDate: z.date(),
-        endDate: z.date(),
-      }))
+      .input(
+        z.object({
+          unitId: z.number(),
+          startDate: z.date(),
+          endDate: z.date(),
+        })
+      )
       .query(async ({ input }) => {
-        return await phase1.generateAccidentReport(input.unitId, input.startDate, input.endDate);
+        return await phase1.generateAccidentReport(
+          input.unitId,
+          input.startDate,
+          input.endDate
+        );
       }),
 
     generateTrainingCompliance: protectedProcedure
@@ -225,13 +268,19 @@ export const phase1CompleteRouter = router({
   // ========================================================================
   esocial: router({
     sendEvent: protectedProcedure
-      .input(z.object({
-        eventType: z.enum(["S-2210", "S-2220", "S-2240", "S-2245"]),
-        unitId: z.number(),
-        data: z.record(z.string(), z.unknown()),
-      }))
+      .input(
+        z.object({
+          eventType: z.enum(["S-2210", "S-2220", "S-2240", "S-2245"]),
+          unitId: z.number(),
+          data: z.record(z.string(), z.unknown()),
+        })
+      )
       .mutation(async ({ input }) => {
-        return await phase1.sendESocialEvent(input.eventType, input.unitId, input.data);
+        return await phase1.sendESocialEvent(
+          input.eventType,
+          input.unitId,
+          input.data
+        );
       }),
 
     getStatus: protectedProcedure
@@ -258,13 +307,19 @@ export const phase1CompleteRouter = router({
   // ========================================================================
   indicators: router({
     calculate: protectedProcedure
-      .input(z.object({
-        unitId: z.number(),
-        startDate: z.date(),
-        endDate: z.date(),
-      }))
+      .input(
+        z.object({
+          unitId: z.number(),
+          startDate: z.date(),
+          endDate: z.date(),
+        })
+      )
       .query(async ({ input }) => {
-        return await phase1.calculateSSTIndicators(input.unitId, input.startDate, input.endDate);
+        return await phase1.calculateSSTIndicators(
+          input.unitId,
+          input.startDate,
+          input.endDate
+        );
       }),
   }),
 });

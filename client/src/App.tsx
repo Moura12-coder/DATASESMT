@@ -2,12 +2,10 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SSTLayout } from "./components/SSTLayout";
-import { MouraProvider } from "./contexts/MouraContext";
-import MouraSidebar from "./components/MouraSidebar";
 
 const PasswordRecoveryPage = lazy(() =>
   import("./pages/PasswordRecovery").then(module => ({
@@ -115,25 +113,13 @@ function AppRouter() {
         )}
       </Route>
       <Route path="/app/dashboard-sst">
-        {() => (
-          <SSTLayout>
-            <DashboardSST />
-          </SSTLayout>
-        )}
+        <Redirect to="/app/dashboard" />
       </Route>
       <Route path="/app/executive-dashboard">
-        {() => (
-          <SSTLayout>
-            <ExecutiveDashboard />
-          </SSTLayout>
-        )}
+        <Redirect to="/app/analytics" />
       </Route>
       <Route path="/app/employee-management">
-        {() => (
-          <SSTLayout>
-            <EmployeeManagement />
-          </SSTLayout>
-        )}
+        <Redirect to="/app/employees" />
       </Route>
       <Route path="/app/risk-map">
         {() => (
@@ -306,47 +292,19 @@ function AppRouter() {
 
       {/* Moura System Routes */}
       <Route path="/moura-dashboard">
-        {() => (
-          <div className="flex">
-            <MouraSidebar />
-            <div className="flex-1 ml-64">
-              <MouraDashboard />
-            </div>
-          </div>
-        )}
+        <Redirect to="/app/dashboard" />
       </Route>
 
       <Route path="/moura-ghe-management">
-        {() => (
-          <div className="flex">
-            <MouraSidebar />
-            <div className="flex-1 ml-64">
-              <MouraGHEManagement />
-            </div>
-          </div>
-        )}
+        <Redirect to="/app/ghe-professional" />
       </Route>
 
       <Route path="/moura-employee-management">
-        {() => (
-          <div className="flex">
-            <MouraSidebar />
-            <div className="flex-1 ml-64">
-              <MouraEmployeeManagement />
-            </div>
-          </div>
-        )}
+        <Redirect to="/app/employees" />
       </Route>
 
       <Route path="/moura-risk-map">
-        {() => (
-          <div className="flex">
-            <MouraSidebar />
-            <div className="flex-1 ml-64">
-              <MouraRiskMap />
-            </div>
-          </div>
-        )}
+        <Redirect to="/app/risk-map-realtime" />
       </Route>
 
       <Route path="/app">
@@ -366,20 +324,18 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <MouraProvider>
-          <TooltipProvider>
-            <Toaster richColors position="top-right" />
-            <Suspense
-              fallback={
-                <div role="status" className="p-8 text-slate-500">
-                  Carregando módulo…
-                </div>
-              }
-            >
-              <AppRouter />
-            </Suspense>
-          </TooltipProvider>
-        </MouraProvider>
+        <TooltipProvider>
+          <Toaster richColors position="top-right" />
+          <Suspense
+            fallback={
+              <div role="status" className="p-8 text-slate-500">
+                Carregando módulo…
+              </div>
+            }
+          >
+            <AppRouter />
+          </Suspense>
+        </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
