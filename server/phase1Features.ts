@@ -49,9 +49,11 @@ export async function createGHE(data: {
     riskMapAreaId: data.riskMapAreaId,
   });
 
-  
   // Registrar auditoria
-  const newGHE = await db.select().from(ghe).where(eq(ghe.id, result[0].insertId));
+  const newGHE = await db
+    .select()
+    .from(ghe)
+    .where(eq(ghe.id, result[0].insertId));
   if (newGHE && newGHE.length > 0) {
     await logGHEAudit({
       gheId: result[0].insertId,
@@ -101,7 +103,7 @@ export async function getEmployeesInGHE(gheId: number) {
         name: employees.name,
         email: employees.email,
         cpf: employees.cpf,
-        employeeNumber: employees.employeeNumber,
+        employeeNumber: employees.id,
         startDate: employeeGhe.startDate,
         endDate: employeeGhe.endDate,
       })
@@ -132,7 +134,9 @@ export async function addExposureAgent(data: {
     agentType: data.agentType,
     agentName: data.agentName,
     riskLevel: data.riskLevel,
-    limiteTolerance: data.limiteTolerance ? String(data.limiteTolerance) : undefined,
+    limiteTolerance: data.limiteTolerance
+      ? String(data.limiteTolerance)
+      : undefined,
     unit: data.unit,
   } as any);
 
@@ -148,7 +152,7 @@ export async function getExposureAgents(gheId: number) {
       .select()
       .from(gheExposureAgents)
       .where(eq(gheExposureAgents.gheId, gheId));
-    
+
     return result || [];
   } catch (error) {
     console.error("Erro ao obter agentes de exposição:", error);
@@ -177,15 +181,16 @@ export async function getEmployeeCompatibility(employeeId: number) {
     .from(employeeGhe)
     .where(eq(employeeGhe.employeeId, employeeId));
 
-  const gheIds = gheAssignments.map((a) => a.gheId);
+  const gheIds = gheAssignments.map(a => a.gheId);
 
   // Obter riscos dos GHE
-  const gheRisks = gheIds.length > 0
-    ? await db
-        .select()
-        .from(risks)
-        .where(inArray(risks.ghe, gheIds.map(String)))
-    : [];
+  const gheRisks =
+    gheIds.length > 0
+      ? await db
+          .select()
+          .from(risks)
+          .where(inArray(risks.ghe, gheIds.map(String)))
+      : [];
 
   // Obter exames do funcionário
   const exams_ = await db
@@ -214,13 +219,16 @@ export async function getEmployeeCompatibility(employeeId: number) {
     trainings,
     compatibility: {
       trained: trainings.length > 0,
-      examsUpToDate: exams_.some((e) => {
+      examsUpToDate: exams_.some(e => {
         const expDate = e.expirationDate;
         return expDate && new Date(expDate) > new Date();
       }),
       episAvailable: epis.length > 0,
-      isApt: trainings.length > 0 &&
-        exams_.some((e) => e.expirationDate && new Date(e.expirationDate) > new Date()) &&
+      isApt:
+        trainings.length > 0 &&
+        exams_.some(
+          e => e.expirationDate && new Date(e.expirationDate) > new Date()
+        ) &&
         epis.length > 0,
     },
   };
@@ -268,7 +276,10 @@ export async function createEnvironmentalAssessment(data: {
   return {
     id: Math.random(),
     ...data,
-    status: data.measurementValue <= data.limiteTolerance ? "Conforme" : "Não Conforme",
+    status:
+      data.measurementValue <= data.limiteTolerance
+        ? "Conforme"
+        : "Não Conforme",
     createdAt: new Date(),
   };
 }
@@ -298,7 +309,13 @@ export async function generatePPRAReport(unitId: number) {
 export interface TechnicalReport {
   id: number;
   unitId: number;
-  type: "LTCAT" | "PPP" | "Laudo Ambiental" | "Laudo Ergonômico" | "PPRA" | "PGR";
+  type:
+    | "LTCAT"
+    | "PPP"
+    | "Laudo Ambiental"
+    | "Laudo Ergonômico"
+    | "PPRA"
+    | "PGR";
   title: string;
   revision: number;
   author: string;
@@ -313,7 +330,13 @@ export interface TechnicalReport {
 
 export async function createTechnicalReport(data: {
   unitId: number;
-  type: "LTCAT" | "PPP" | "Laudo Ambiental" | "Laudo Ergonômico" | "PPRA" | "PGR";
+  type:
+    | "LTCAT"
+    | "PPP"
+    | "Laudo Ambiental"
+    | "Laudo Ergonômico"
+    | "PPRA"
+    | "PGR";
   title: string;
   author: string;
   validFrom: Date;
@@ -360,7 +383,6 @@ export async function getTechnicalReportHistory(reportId: number) {
     },
   ];
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUDIT LOG FUNCTIONS
@@ -432,13 +454,13 @@ export async function deleteGHE(gheId: number) {
 
   // Deletar agentes de exposição primeiro
   await db.delete(gheExposureAgents).where(eq(gheExposureAgents.gheId, gheId));
-  
+
   // Deletar funcionários vinculados
   await db.delete(employeeGhe).where(eq(employeeGhe.gheId, gheId));
-  
+
   // Deletar GHE
   await db.delete(ghe).where(eq(ghe.id, gheId));
-  
+
   // Registrar auditoria
   if (gheRecord) {
     await logGHEAudit({
@@ -448,18 +470,21 @@ export async function deleteGHE(gheId: number) {
       oldValues: gheRecord,
     });
   }
-  
+
   return { success: true, message: `GHE ${gheId} excluído com sucesso` };
 }
 
-export async function updateGHE(gheId: number, data: {
-  code?: string;
-  name?: string;
-  description?: string;
-  location?: string;
-  responsible?: string;
-  status?: string;
-}) {
+export async function updateGHE(
+  gheId: number,
+  data: {
+    code?: string;
+    name?: string;
+    description?: string;
+    location?: string;
+    responsible?: string;
+    status?: string;
+  }
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -476,7 +501,7 @@ export async function updateGHE(gheId: number, data: {
   if (data.status) updateData.status = data.status;
 
   await db.update(ghe).set(updateData).where(eq(ghe.id, gheId));
-  
+
   // Registrar auditoria
   if (oldRecord) {
     await logGHEAudit({
@@ -487,15 +512,15 @@ export async function updateGHE(gheId: number, data: {
       newValues: { ...oldRecord, ...updateData },
     });
   }
-  
+
   return { success: true, message: `GHE ${gheId} atualizado com sucesso` };
 }
 
 export async function deleteExposureAgent(agentId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  
+
   await db.delete(gheExposureAgents).where(eq(gheExposureAgents.id, agentId));
-  
+
   return { success: true, message: `Agente ${agentId} removido com sucesso` };
 }

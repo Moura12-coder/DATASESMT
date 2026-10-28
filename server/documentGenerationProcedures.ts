@@ -117,20 +117,22 @@ export const documentGenerationRouter = router({
     .input(GeneratePGRSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        if (ctx.user?.role !== "admin" && ctx.user?.role !== "manager") {
+        if (ctx.user?.role !== "admin") {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Apenas administradores e gerentes podem gerar documentos",
           });
         }
 
-        const content = PGR_TEMPLATE
-          .replace("{companyName}", input.companyName)
+        const content = PGR_TEMPLATE.replace("{companyName}", input.companyName)
           .replace("{cnpj}", input.cnpj || "N/A")
           .replace("{riskInventory}", input.riskInventory)
           .replace("{actionPlan}", input.actionPlan)
           .replace("{responsibleTeam}", input.responsibleTeam)
-          .replace("{implementationDeadline}", input.implementationDeadline || "A definir")
+          .replace(
+            "{implementationDeadline}",
+            input.implementationDeadline || "A definir"
+          )
           .replace("{date}", new Date().toLocaleDateString("pt-BR"))
           .replace("{author}", ctx.user?.name || "Sistema");
 
@@ -155,15 +157,17 @@ export const documentGenerationRouter = router({
     .input(GeneratePCMSOSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        if (ctx.user?.role !== "admin" && ctx.user?.role !== "manager") {
+        if (ctx.user?.role !== "admin") {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Apenas administradores e gerentes podem gerar documentos",
           });
         }
 
-        const content = PCMSO_TEMPLATE
-          .replace("{companyName}", input.companyName)
+        const content = PCMSO_TEMPLATE.replace(
+          "{companyName}",
+          input.companyName
+        )
           .replace("{cnpj}", input.cnpj || "N/A")
           .replace("{occupationalMedic}", input.occupationalMedic)
           .replace("{medicRegistration}", input.medicRegistration || "N/A")
@@ -194,15 +198,17 @@ export const documentGenerationRouter = router({
     .input(GenerateLTCATSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        if (ctx.user?.role !== "admin" && ctx.user?.role !== "manager") {
+        if (ctx.user?.role !== "admin") {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Apenas administradores e gerentes podem gerar documentos",
           });
         }
 
-        const content = LTCAT_TEMPLATE
-          .replace("{companyName}", input.companyName)
+        const content = LTCAT_TEMPLATE.replace(
+          "{companyName}",
+          input.companyName
+        )
           .replace("{cnpj}", input.cnpj || "N/A")
           .replace("{specialActivities}", input.specialActivities.join("\n- "))
           .replace("{exposureFactors}", input.exposureFactors)

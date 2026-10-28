@@ -1,6 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -144,8 +144,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 @layer base {
@@ -165,21 +165,39 @@
   }
   button {
     @apply transition-all duration-150;
-    &:active { transform: scale(0.97); }
+    &:active {
+      transform: scale(0.97);
+    }
   }
 }
 
 /* ─── SST Status Badges ─────────────────────────────────────────────────── */
-.badge-valid { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
-.badge-expiring { @apply bg-amber-50 text-amber-700 border border-amber-200; }
-.badge-expired { @apply bg-red-50 text-red-700 border border-red-200; }
-.badge-pending { @apply bg-blue-50 text-blue-700 border border-blue-200; }
+.badge-valid {
+  @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+}
+.badge-expiring {
+  @apply bg-amber-50 text-amber-700 border border-amber-200;
+}
+.badge-expired {
+  @apply bg-red-50 text-red-700 border border-red-200;
+}
+.badge-pending {
+  @apply bg-blue-50 text-blue-700 border border-blue-200;
+}
 
 /* ─── Risk Level Badges ──────────────────────────────────────────────────── */
-.risk-toleravel { @apply bg-emerald-50 text-emerald-700 border border-emerald-200; }
-.risk-moderado { @apply bg-yellow-50 text-yellow-700 border border-yellow-200; }
-.risk-substancial { @apply bg-orange-50 text-orange-700 border border-orange-200; }
-.risk-intoleravel { @apply bg-red-50 text-red-700 border border-red-200; }
+.risk-toleravel {
+  @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+}
+.risk-moderado {
+  @apply bg-yellow-50 text-yellow-700 border border-yellow-200;
+}
+.risk-substancial {
+  @apply bg-orange-50 text-orange-700 border border-orange-200;
+}
+.risk-intoleravel {
+  @apply bg-red-50 text-red-700 border border-red-200;
+}
 
 /* ─── Sidebar Background - Home Page Blue ────────────────────────────────────────── */
 :root {
@@ -218,13 +236,24 @@
 }
 
 /* ─── Sidebar Scrollbar ──────────────────────────────────────────────────── */
-.sidebar-scroll::-webkit-scrollbar { width: 4px; }
-.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
-.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3) !important; border-radius: 9999px; }
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 9999px;
+}
 
 /* ─── Top Bar Header - Home Page Style ────────────────────────────────────────── */
 [class*="SidebarInset"] > div:first-child {
-  background: linear-gradient(90deg, rgb(30, 58, 138) 0%, rgb(6, 182, 212) 100%) !important;
+  background: linear-gradient(
+    90deg,
+    rgb(30, 58, 138) 0%,
+    rgb(6, 182, 212) 100%
+  ) !important;
   border-color: rgb(30, 58, 138) !important;
 }
 
@@ -240,30 +269,62 @@
 
 /* ─── KPI Card Animations ────────────────────────────────────────────────── */
 @keyframes countUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.kpi-value { animation: countUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.kpi-value {
+  animation: countUp 0.4s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
 
 /* ─── Table Styles ───────────────────────────────────────────────────────── */
-.data-table th { @apply text-xs font-semibold text-muted-foreground uppercase tracking-wider; }
-.data-table td { @apply text-sm; }
-.data-table tr { @apply border-b border-border transition-colors; }
-.data-table tbody tr:hover { @apply bg-muted/30; }
+.data-table th {
+  @apply text-xs font-semibold text-muted-foreground uppercase tracking-wider;
+}
+.data-table td {
+  @apply text-sm;
+}
+.data-table tr {
+  @apply border-b border-border transition-colors;
+}
+.data-table tbody tr:hover {
+  @apply bg-muted/30;
+}
 
 /* ─── Page Transitions ───────────────────────────────────────────────────── */
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.page-enter { animation: pageIn 0.25s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.page-enter {
+  animation: pageIn 0.25s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
 
 /* ─── Scrollbar Global ───────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/30; }
-
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
+}
 
 /* ─── Login Page Styles ──────────────────────────────────────────────────── */
 @keyframes fadeInUp {
@@ -312,19 +373,24 @@
 .login-divider {
   @apply relative my-6;
   &::before {
-    content: '';
+    content: "";
     @apply absolute inset-0 flex items-center;
   }
 }
 
 /* ─── Background Image Overlay ───────────────────────────────────────────── */
 .login-bg-overlay {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.6) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.8) 0%,
+    rgba(30, 58, 138, 0.6) 100%
+  );
 }
 
 /* ─── Decorative Blobs ───────────────────────────────────────────────────── */
 @keyframes blob {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
   }
   33% {
@@ -357,7 +423,7 @@
   .login-left-side {
     @apply hidden;
   }
-  
+
   .login-right-side {
     @apply w-full;
   }
@@ -365,7 +431,15 @@
 
 /* --- Custom Animations ──────────────────────────────────────────────────── */
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.animate-fade-in-up { animation: fade-in-up 0.8s ease-out forwards; }
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}

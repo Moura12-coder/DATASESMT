@@ -1,13 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { trpc } from '@/lib/trpc';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Link2, Unlink } from 'lucide-react';
-import { RiskMapRealtime } from '@/components/RiskMapRealtime';
+import React, { useState, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { Plus, Edit2, Trash2, Link2, Unlink } from "lucide-react";
+import { RiskMapRealtime } from "@/components/RiskMapRealtime";
 
 interface RiskMapArea {
   id: number;
@@ -26,13 +37,17 @@ export default function RiskMapNew() {
   const [isEditing, setIsEditing] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
-  const [newArea, setNewArea] = useState({ name: '', description: '' });
+  const [newArea, setNewArea] = useState({ name: "", description: "" });
   const [selectedGheId, setSelectedGheId] = useState<number | null>(null);
   const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
 
   // Fetch real-time risk map areas with circles
   const queryKey = { unitId }; // Stabilize query key
-  const { data: areas = [], isLoading, refetch } = trpc.riskMap.listAreasWithCircles.useQuery(
+  const {
+    data: areas = [],
+    isLoading,
+    refetch,
+  } = trpc.riskMap.listAreasWithCircles.useQuery(
     queryKey,
     { refetchInterval: 5000, staleTime: 2000 } // Auto-refresh every 5 seconds
   );
@@ -44,65 +59,66 @@ export default function RiskMapNew() {
   // Mutations
   const createAreaMutation = trpc.riskMap.createArea.useMutation({
     onSuccess: () => {
-      toast.success('Área criada com sucesso');
-      setNewArea({ name: '', description: '' });
+      toast.success("Área criada com sucesso");
+      setNewArea({ name: "", description: "" });
       setShowCreateDialog(false);
       // Force immediate refetch
       setTimeout(() => refetch(), 100);
     },
-    onError: (error) => {
-      console.error('Create error:', error);
+    onError: error => {
+      console.error("Create error:", error);
       toast.error(`Erro ao criar área: ${error.message}`);
     },
   });
 
   const deleteAreaMutation = trpc.riskMap.deleteArea.useMutation({
     onSuccess: () => {
-      toast.success('Área deletada com sucesso');
+      toast.success("Área deletada com sucesso");
       // Force immediate refetch
       setTimeout(() => refetch(), 100);
     },
-    onError: (error) => {
-      console.error('Delete error:', error);
+    onError: error => {
+      console.error("Delete error:", error);
       toast.error(`Erro ao deletar área: ${error.message}`);
     },
   });
 
-  const updateAreaPositionMutation = trpc.riskMap.updateAreaPosition.useMutation({
-    onSuccess: () => {
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao atualizar posição: ${error.message}`);
-    },
-  });
+  const updateAreaPositionMutation =
+    trpc.riskMap.updateAreaPosition.useMutation({
+      onSuccess: () => {
+        refetch();
+      },
+      onError: error => {
+        toast.error(`Erro ao atualizar posição: ${error.message}`);
+      },
+    });
 
   const linkGheMutation = trpc.riskMap.linkGheToArea.useMutation({
     onSuccess: () => {
-      toast.success('GHE vinculado à área com sucesso');
+      toast.success("GHE vinculado à área com sucesso");
       refetch();
       setShowLinkDialog(false);
       setSelectedGheId(null);
       setSelectedAreaId(null);
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao vincular GHE: ${error.message}`);
     },
   });
 
   const unlinkGheMutation = trpc.riskMap.unlinkGheFromArea.useMutation({
     onSuccess: () => {
-      toast.success('GHE desvinculado com sucesso');
+      toast.success("GHE desvinculado com sucesso");
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Erro ao desvincular GHE: ${error.message}`);
     },
   });
 
   const handleCreateArea = () => {
     if (!newArea.name.trim()) {
-      toast.error('Digite o nome da área');
+      toast.error("Digite o nome da área");
       return;
     }
     createAreaMutation.mutate({
@@ -119,12 +135,12 @@ export default function RiskMapNew() {
   };
 
   const handleDeleteArea = async (areaId: number) => {
-    if (window.confirm('Tem certeza que deseja deletar esta área?')) {
+    if (window.confirm("Tem certeza que deseja deletar esta área?")) {
       try {
         await deleteAreaMutation.mutateAsync({ id: areaId });
-        console.log('Área deletada com sucesso');
+        console.log("Área deletada com sucesso");
       } catch (error) {
-        console.error('Erro ao deletar área:', error);
+        console.error("Erro ao deletar área:", error);
       }
     }
   };
@@ -135,7 +151,7 @@ export default function RiskMapNew() {
 
   const handleLinkGhe = () => {
     if (!selectedGheId || !selectedAreaId) {
-      toast.error('Selecione um GHE e uma área');
+      toast.error("Selecione um GHE e uma área");
       return;
     }
     linkGheMutation.mutate({ gheId: selectedGheId, areaId: selectedAreaId });
@@ -143,7 +159,7 @@ export default function RiskMapNew() {
 
   const handleSelectChange = (selectedIds: number[]) => {
     // Handle bulk operations if needed
-    console.log('Selected areas:', selectedIds);
+    console.log("Selected areas:", selectedIds);
   };
 
   return (
@@ -153,16 +169,17 @@ export default function RiskMapNew() {
         <div>
           <h1 className="text-3xl font-bold">Mapa de Riscos em Tempo Real</h1>
           <p className="text-gray-600 mt-1">
-            Visualização interativa com círculos coloridos por tipo e nível de risco
+            Visualização interativa com círculos coloridos por tipo e nível de
+            risco
           </p>
         </div>
         <div className="flex gap-2">
           <Button
             onClick={() => setIsEditing(!isEditing)}
-            variant={isEditing ? 'default' : 'outline'}
+            variant={isEditing ? "default" : "outline"}
             className="gap-2"
           >
-            {isEditing ? 'Salvar' : 'Editar Layout'}
+            {isEditing ? "Salvar" : "Editar Layout"}
           </Button>
           <Button
             onClick={() => setShowCreateDialog(true)}
@@ -179,7 +196,9 @@ export default function RiskMapNew() {
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total de Áreas</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total de Áreas
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{areas.length}</div>
@@ -187,7 +206,9 @@ export default function RiskMapNew() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Riscos Identificados</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Riscos Identificados
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -197,11 +218,17 @@ export default function RiskMapNew() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Agentes Totais</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Agentes Totais
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {areas.reduce((sum, a) => sum + a.riskCircles.reduce((s, c) => s + c.count, 0), 0)}
+              {areas.reduce(
+                (sum, a) =>
+                  sum + a.riskCircles.reduce((s, c) => s + c.count, 0),
+                0
+              )}
             </div>
           </CardContent>
         </Card>
@@ -221,7 +248,10 @@ export default function RiskMapNew() {
             <RiskMapRealtime
               areas={areas}
               isEditing={isEditing}
-              onAreaUpdate={handleUpdatePosition}
+              onAreaUpdate={(id, patch) => {
+                if (patch.x !== undefined && patch.y !== undefined)
+                  handleUpdatePosition(id, patch.x, patch.y);
+              }}
               onAreaDelete={handleDeleteArea}
               onSelectChange={handleSelectChange}
             />
@@ -237,7 +267,8 @@ export default function RiskMapNew() {
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Vincule Grupos Homogêneos de Exposição (GHEs) às áreas do mapa para visualizar os riscos em tempo real.
+              Vincule Grupos Homogêneos de Exposição (GHEs) às áreas do mapa
+              para visualizar os riscos em tempo real.
             </p>
             <Button
               onClick={() => setShowLinkDialog(true)}
@@ -264,7 +295,9 @@ export default function RiskMapNew() {
                       </div>
                       {ghe.riskMapAreaId ? (
                         <Button
-                          onClick={() => unlinkGheMutation.mutate({ gheId: ghe.id })}
+                          onClick={() =>
+                            unlinkGheMutation.mutate({ gheId: ghe.id })
+                          }
                           variant="ghost"
                           size="sm"
                           className="gap-1"
@@ -305,15 +338,19 @@ export default function RiskMapNew() {
               <Input
                 placeholder="Ex: Sala de Produção"
                 value={newArea.name}
-                onChange={(e) => setNewArea({ ...newArea, name: e.target.value })}
+                onChange={e => setNewArea({ ...newArea, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Descrição (opcional)</label>
+              <label className="text-sm font-medium">
+                Descrição (opcional)
+              </label>
               <Input
                 placeholder="Ex: Área com máquinas de produção"
                 value={newArea.description}
-                onChange={(e) => setNewArea({ ...newArea, description: e.target.value })}
+                onChange={e =>
+                  setNewArea({ ...newArea, description: e.target.value })
+                }
               />
             </div>
             <div className="flex gap-2 justify-end">
@@ -339,8 +376,8 @@ export default function RiskMapNew() {
             <div>
               <label className="text-sm font-medium">Selecione um GHE</label>
               <Select
-                value={selectedGheId?.toString() || ''}
-                onValueChange={(v) => setSelectedGheId(parseInt(v))}
+                value={selectedGheId?.toString() || ""}
+                onValueChange={v => setSelectedGheId(parseInt(v))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Escolha um GHE" />
@@ -357,8 +394,8 @@ export default function RiskMapNew() {
             <div>
               <label className="text-sm font-medium">Selecione uma Área</label>
               <Select
-                value={selectedAreaId?.toString() || ''}
-                onValueChange={(v) => setSelectedAreaId(parseInt(v))}
+                value={selectedAreaId?.toString() || ""}
+                onValueChange={v => setSelectedAreaId(parseInt(v))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Escolha uma área" />

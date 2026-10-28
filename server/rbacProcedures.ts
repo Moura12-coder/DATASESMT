@@ -5,6 +5,9 @@
 
 import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
+import { eq, sql } from "drizzle-orm";
+import { users } from "../drizzle/schema";
+import { getDb } from "./db";
 import { TRPCError } from "@trpc/server";
 
 // ─── ROLE DEFINITIONS ────────────────────────────────────────────────────────
@@ -53,20 +56,15 @@ export const RolePermissions: Record<UserRole, string[]> = {
     "create_documents",
     "view_analytics",
   ],
-  [UserRole.VIEWER]: [
-    "view_own_documents",
-    "view_analytics",
-  ],
-  [UserRole.USER]: [
-    "view_own_documents",
-  ],
+  [UserRole.VIEWER]: ["view_own_documents", "view_analytics"],
+  [UserRole.USER]: ["view_own_documents"],
 };
 
 // ─── VALIDATION SCHEMAS ──────────────────────────────────────────────────────
 
 const UpdateUserRoleSchema = z.object({
   userId: z.number().positive(),
-  newRole: z.enum(["admin", "manager", "employee", "viewer", "user"]),
+  newRole: z.enum(["admin", "user"]),
 });
 
 const CheckPermissionSchema = z.object({
@@ -132,11 +130,13 @@ export const rbacRouter = router({
         });
       }
 
-      return Object.entries(RolePermissions).map(([role, permissions]) => ({
-        role,
-        permissions,
-        hierarchy: RoleHierarchy[role as UserRole],
-      }));
+      return Object.entries(RolePermissions)
+        .filter(([role]) => role === "admin" || role === "user")
+        .map(([role, permissions]) => ({
+          role,
+          permissions,
+          hierarchy: RoleHierarchy[role as UserRole],
+        }));
     } catch (error) {
       if (error instanceof TRPCError) throw error;
       throw new TRPCError({
@@ -158,7 +158,25 @@ export const rbacRouter = router({
           });
         }
 
-        // In production, update the user's role in the database
+        if (input.userId === ctx.user.id)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Não é permitido alterar seu próprio perfil",
+          });
+        const db = await getDb();
+        if (!db) throw new Error("Database not available");
+        const [result] = await db
+          .update(users)
+          .set({
+            role: input.newRole,
+            sessionVersion: sql`${users.sessionVersion} + 1`,
+          })
+          .where(eq(users.id, input.userId));
+        if (!result.affectedRows)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Usuário não encontrado",
+          });
         return {
           success: true,
           message: `Role do usuário atualizado para ${input.newRole}`,

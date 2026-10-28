@@ -17,13 +17,25 @@ export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
-  email: varchar("email", { length: 320 }),
+  email: varchar("email", { length: 320 }).unique(),
   loginMethod: varchar("loginMethod", { length: 64 }),
   passwordHash: text("passwordHash"), // For email/password login
   emailVerified: boolean("emailVerified").default(false),
   resetToken: varchar("resetToken", { length: 255 }), // For password reset
   resetTokenExpiry: timestamp("resetTokenExpiry"), // Expiry for reset token
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  registrationStatus: mysqlEnum("registrationStatus", [
+    "pending",
+    "approved",
+    "rejected",
+  ])
+    .default("approved")
+    .notNull(),
+  rejectionReason: text("rejectionReason"),
+  companyName: varchar("companyName", { length: 255 }),
+  cnpj: varchar("cnpj", { length: 20 }),
+  phone: varchar("phone", { length: 20 }),
+  sessionVersion: int("sessionVersion").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -49,7 +61,12 @@ export const sectors = mysqlTable("sectors", {
   unitId: int("unitId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   responsible: varchar("responsible", { length: 255 }),
-  riskLevel: mysqlEnum("riskLevel", ["Baixo", "Médio", "Alto", "Crítico"]).default("Baixo"),
+  riskLevel: mysqlEnum("riskLevel", [
+    "Baixo",
+    "Médio",
+    "Alto",
+    "Crítico",
+  ]).default("Baixo"),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -68,7 +85,9 @@ export const employees = mysqlTable("employees", {
   birthDate: date("birthDate"),
   phone: varchar("phone", { length: 20 }),
   email: varchar("email", { length: 320 }),
-  status: mysqlEnum("status", ["Ativo", "Afastado", "Férias", "Desligado"]).default("Ativo").notNull(),
+  status: mysqlEnum("status", ["Ativo", "Afastado", "Férias", "Desligado"])
+    .default("Ativo")
+    .notNull(),
   esocialCategory: varchar("esocialCategory", { length: 10 }),
   pis: varchar("pis", { length: 20 }),
   ctps: varchar("ctps", { length: 30 }),
@@ -84,7 +103,13 @@ export const employees = mysqlTable("employees", {
 export const leaveOfAbsence = mysqlTable("leave_of_absence", {
   id: int("id").autoincrement().primaryKey(),
   employeeId: int("employeeId").notNull(),
-  type: mysqlEnum("type", ["Acidente Trabalho", "Doença Ocupacional", "Doença Comum", "Maternidade", "Outro"]).notNull(),
+  type: mysqlEnum("type", [
+    "Acidente Trabalho",
+    "Doença Ocupacional",
+    "Doença Comum",
+    "Maternidade",
+    "Outro",
+  ]).notNull(),
   startDate: date("startDate").notNull(),
   endDate: date("endDate"),
   cid: varchar("cid", { length: 10 }),
@@ -99,19 +124,40 @@ export const risks = mysqlTable("risks", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId").notNull(),
   sectorId: int("sectorId"),
-  type: mysqlEnum("type", ["Físico", "Químico", "Biológico", "Ergonômico", "Acidente", "Psicossocial"]).notNull(),
+  type: mysqlEnum("type", [
+    "Físico",
+    "Químico",
+    "Biológico",
+    "Ergonômico",
+    "Acidente",
+    "Psicossocial",
+  ]).notNull(),
   description: varchar("description", { length: 500 }).notNull(),
   source: varchar("source", { length: 255 }),
   ghe: varchar("ghe", { length: 255 }),
   probability: mysqlEnum("probability", ["1", "2", "3", "4", "5"]).default("1"),
   severity: mysqlEnum("severity", ["1", "2", "3", "4", "5"]).default("1"),
-  riskLevel: mysqlEnum("riskLevel", ["Tolerável", "Moderado", "Substancial", "Intolerável"]).default("Tolerável"),
+  riskLevel: mysqlEnum("riskLevel", [
+    "Tolerável",
+    "Moderado",
+    "Substancial",
+    "Intolerável",
+  ]).default("Tolerável"),
   controlMeasures: text("controlMeasures"),
   existingControls: text("existingControls"),
-  residualRisk: mysqlEnum("residualRisk", ["Tolerável", "Moderado", "Substancial", "Intolerável"]).default("Tolerável"),
+  residualRisk: mysqlEnum("residualRisk", [
+    "Tolerável",
+    "Moderado",
+    "Substancial",
+    "Intolerável",
+  ]).default("Tolerável"),
   responsible: varchar("responsible", { length: 255 }),
   deadline: date("deadline"),
-  status: mysqlEnum("status", ["Identificado", "Em Controle", "Controlado"]).default("Identificado"),
+  status: mysqlEnum("status", [
+    "Identificado",
+    "Em Controle",
+    "Controlado",
+  ]).default("Identificado"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -129,8 +175,20 @@ export const actionPlans = mysqlTable("action_plans", {
   when: date("when").notNull(),
   howMuch: decimal("howMuch", { precision: 10, scale: 2 }),
   how: text("how"),
-  status: mysqlEnum("status", ["Pendente", "Em Andamento", "Concluída", "Cancelada"]).default("Pendente").notNull(),
-  priority: mysqlEnum("priority", ["Baixa", "Média", "Alta", "Crítica"]).default("Média"),
+  status: mysqlEnum("status", [
+    "Pendente",
+    "Em Andamento",
+    "Concluída",
+    "Cancelada",
+  ])
+    .default("Pendente")
+    .notNull(),
+  priority: mysqlEnum("priority", [
+    "Baixa",
+    "Média",
+    "Alta",
+    "Crítica",
+  ]).default("Média"),
   completedAt: timestamp("completedAt"),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -141,15 +199,28 @@ export const actionPlans = mysqlTable("action_plans", {
 export const exams = mysqlTable("exams", {
   id: int("id").autoincrement().primaryKey(),
   employeeId: int("employeeId").notNull(),
-  type: mysqlEnum("type", ["Admissional", "Periódico", "Demissional", "Retorno ao Trabalho", "Mudança de Função"]).notNull(),
+  type: mysqlEnum("type", [
+    "Admissional",
+    "Periódico",
+    "Demissional",
+    "Retorno ao Trabalho",
+    "Mudança de Função",
+  ]).notNull(),
   examDate: date("examDate").notNull(),
   expirationDate: date("expirationDate"),
   doctor: varchar("doctor", { length: 255 }),
   crm: varchar("crm", { length: 20 }),
-  result: mysqlEnum("result", ["Apto", "Apto com Restrições", "Inapto Temporário", "Inapto"]).default("Apto"),
+  result: mysqlEnum("result", [
+    "Apto",
+    "Apto com Restrições",
+    "Inapto Temporário",
+    "Inapto",
+  ]).default("Apto"),
   restrictions: text("restrictions"),
   asoFileKey: varchar("asoFileKey", { length: 500 }),
-  status: mysqlEnum("status", ["Válido", "A Vencer", "Vencido"]).default("Válido"),
+  status: mysqlEnum("status", ["Válido", "A Vencer", "Vencido"]).default(
+    "Válido"
+  ),
   esocialSent: boolean("esocialSent").default(false),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -192,7 +263,13 @@ export const trainings = mysqlTable("trainings", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   nr: varchar("nr", { length: 20 }),
-  type: mysqlEnum("type", ["Integração", "Periódico", "Específico", "Reciclagem", "Outro"]).default("Periódico"),
+  type: mysqlEnum("type", [
+    "Integração",
+    "Periódico",
+    "Específico",
+    "Reciclagem",
+    "Outro",
+  ]).default("Periódico"),
   instructor: varchar("instructor", { length: 255 }),
   workload: int("workload"),
   validityMonths: int("validityMonths").default(12),
@@ -208,7 +285,9 @@ export const trainingRecords = mysqlTable("training_records", {
   employeeId: int("employeeId").notNull(),
   completionDate: date("completionDate").notNull(),
   expiryDate: date("expiryDate"),
-  status: mysqlEnum("status", ["Vigente", "A Vencer", "Vencido"]).default("Vigente"),
+  status: mysqlEnum("status", ["Vigente", "A Vencer", "Vencido"]).default(
+    "Vigente"
+  ),
   score: decimal("score", { precision: 5, scale: 2 }),
   certificateFileKey: varchar("certificateFileKey", { length: 500 }),
   notes: text("notes"),
@@ -221,7 +300,13 @@ export const incidents = mysqlTable("incidents", {
   unitId: int("unitId").notNull(),
   sectorId: int("sectorId"),
   employeeId: int("employeeId"),
-  type: mysqlEnum("type", ["Acidente com Afastamento", "Acidente sem Afastamento", "Quase Acidente", "Doença Ocupacional", "Incidente Perigoso"]).notNull(),
+  type: mysqlEnum("type", [
+    "Acidente com Afastamento",
+    "Acidente sem Afastamento",
+    "Quase Acidente",
+    "Doença Ocupacional",
+    "Incidente Perigoso",
+  ]).notNull(),
   date: timestamp("date").notNull(),
   description: text("description").notNull(),
   location: varchar("location", { length: 255 }),
@@ -230,10 +315,20 @@ export const incidents = mysqlTable("incidents", {
   daysLost: int("daysLost").default(0),
   catNumber: varchar("catNumber", { length: 30 }),
   catDate: date("catDate"),
-  investigationMethod: mysqlEnum("investigationMethod", ["5 Porquês", "Árvore de Causas", "FMEA", "Outro"]),
+  investigationMethod: mysqlEnum("investigationMethod", [
+    "5 Porquês",
+    "Árvore de Causas",
+    "FMEA",
+    "Outro",
+  ]),
   rootCauses: json("rootCauses"),
   immediateActions: text("immediateActions"),
-  status: mysqlEnum("status", ["Aberto", "Em Investigação", "Aguardando Ação", "Encerrado"]).default("Aberto"),
+  status: mysqlEnum("status", [
+    "Aberto",
+    "Em Investigação",
+    "Aguardando Ação",
+    "Encerrado",
+  ]).default("Aberto"),
   esocialSent: boolean("esocialSent").default(false),
   esocialProtocol: varchar("esocialProtocol", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -248,7 +343,13 @@ export const esocialEvents = mysqlTable("esocial_events", {
   referenceId: int("referenceId"),
   referenceType: varchar("referenceType", { length: 50 }),
   eventDate: timestamp("eventDate").notNull(),
-  status: mysqlEnum("status", ["Pendente", "Enviado", "Sucesso", "Erro", "Retificado"]).default("Pendente"),
+  status: mysqlEnum("status", [
+    "Pendente",
+    "Enviado",
+    "Sucesso",
+    "Erro",
+    "Retificado",
+  ]).default("Pendente"),
   protocol: varchar("protocol", { length: 100 }),
   errorMessage: text("errorMessage"),
   payload: json("payload"),
@@ -261,7 +362,13 @@ export const cipaMembers = mysqlTable("cipa_members", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId").notNull(),
   employeeId: int("employeeId").notNull(),
-  role: mysqlEnum("role", ["Presidente", "Vice-Presidente", "Secretário", "Membro Efetivo", "Membro Suplente"]).notNull(),
+  role: mysqlEnum("role", [
+    "Presidente",
+    "Vice-Presidente",
+    "Secretário",
+    "Membro Efetivo",
+    "Membro Suplente",
+  ]).notNull(),
   origin: mysqlEnum("origin", ["Eleito", "Indicado"]).default("Eleito"),
   mandateStart: date("mandateStart"),
   mandateEnd: date("mandateEnd"),
@@ -278,7 +385,9 @@ export const cipaMeetings = mysqlTable("cipa_meetings", {
   agenda: text("agenda"),
   minutes: text("minutes"),
   minutesFileKey: varchar("minutesFileKey", { length: 500 }),
-  status: mysqlEnum("status", ["Agendada", "Realizada", "Cancelada"]).default("Agendada"),
+  status: mysqlEnum("status", ["Agendada", "Realizada", "Cancelada"]).default(
+    "Agendada"
+  ),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -288,7 +397,12 @@ export const inspections = mysqlTable("inspections", {
   unitId: int("unitId").notNull(),
   sectorId: int("sectorId"),
   title: varchar("title", { length: 255 }).notNull(),
-  type: mysqlEnum("type", ["Rotina", "Especial", "Auditoria", "Pós-Acidente"]).default("Rotina"),
+  type: mysqlEnum("type", [
+    "Rotina",
+    "Especial",
+    "Auditoria",
+    "Pós-Acidente",
+  ]).default("Rotina"),
   inspector: varchar("inspector", { length: 255 }),
   inspectionDate: date("inspectionDate").notNull(),
   nr: varchar("nr", { length: 20 }),
@@ -296,7 +410,11 @@ export const inspections = mysqlTable("inspections", {
   nonConformities: int("nonConformities").default(0),
   conformities: int("conformities").default(0),
   score: decimal("score", { precision: 5, scale: 2 }),
-  status: mysqlEnum("status", ["Agendada", "Em Andamento", "Concluída"]).default("Agendada"),
+  status: mysqlEnum("status", [
+    "Agendada",
+    "Em Andamento",
+    "Concluída",
+  ]).default("Agendada"),
   notes: text("notes"),
   reportFileKey: varchar("reportFileKey", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -307,9 +425,22 @@ export const documents = mysqlTable("documents", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId"),
   title: varchar("title", { length: 255 }).notNull(),
-  type: mysqlEnum("type", ["PGR", "PCMSO", "LTCAT", "PPP", "ASO", "CAT", "Laudo", "Certificado", "Procedimento", "Outro"]).notNull(),
+  type: mysqlEnum("type", [
+    "PGR",
+    "PCMSO",
+    "LTCAT",
+    "PPP",
+    "ASO",
+    "CAT",
+    "Laudo",
+    "Certificado",
+    "Procedimento",
+    "Outro",
+  ]).notNull(),
   revision: varchar("revision", { length: 20 }).default("Rev. 01"),
-  status: mysqlEnum("status", ["Vigente", "Em Revisão", "Obsoleto"]).default("Vigente"),
+  status: mysqlEnum("status", ["Vigente", "Em Revisão", "Obsoleto"]).default(
+    "Vigente"
+  ),
   fileKey: varchar("fileKey", { length: 500 }),
   fileUrl: varchar("fileUrl", { length: 1000 }),
   fileName: varchar("fileName", { length: 255 }),
@@ -336,7 +467,9 @@ export const thirdParties = mysqlTable("third_parties", {
   serviceType: varchar("serviceType", { length: 255 }),
   contractStart: date("contractStart"),
   contractEnd: date("contractEnd"),
-  status: mysqlEnum("status", ["Ativo", "Inativo", "Suspenso"]).default("Ativo"),
+  status: mysqlEnum("status", ["Ativo", "Inativo", "Suspenso"]).default(
+    "Ativo"
+  ),
   pgr: boolean("pgr").default(false),
   pcmso: boolean("pcmso").default(false),
   notes: text("notes"),
@@ -348,10 +481,19 @@ export const costs = mysqlTable("costs", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId"),
   description: varchar("description", { length: 255 }).notNull(),
-  category: mysqlEnum("category", ["EPI", "Exame", "Treinamento", "Consultor", "Equipamento", "Outro"]).notNull(),
+  category: mysqlEnum("category", [
+    "EPI",
+    "Exame",
+    "Treinamento",
+    "Consultor",
+    "Equipamento",
+    "Outro",
+  ]).notNull(),
   value: decimal("value", { precision: 12, scale: 2 }).notNull(),
   date: date("date").notNull(),
-  status: mysqlEnum("status", ["Pago", "Pendente", "Cancelado"]).default("Pendente"),
+  status: mysqlEnum("status", ["Pago", "Pendente", "Cancelado"]).default(
+    "Pendente"
+  ),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -369,7 +511,14 @@ export const aiChats = mysqlTable("ai_chats", {
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId"),
-  type: mysqlEnum("type", ["exam_expiry", "epi_stock", "training_expiry", "action_deadline", "incident", "general"]).notNull(),
+  type: mysqlEnum("type", [
+    "exam_expiry",
+    "epi_stock",
+    "training_expiry",
+    "action_deadline",
+    "incident",
+    "general",
+  ]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   referenceId: int("referenceId"),
@@ -385,24 +534,39 @@ export const riskMapAreas = mysqlTable("risk_map_areas", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   coordinates: json("coordinates"), // {x, y, width, height}
-  riskLevel: mysqlEnum("riskLevel", ["Tolerável", "Moderado", "Substancial", "Intolerável"]).default("Tolerável"),
+  riskLevel: mysqlEnum("riskLevel", [
+    "Tolerável",
+    "Moderado",
+    "Substancial",
+    "Intolerável",
+  ]).default("Tolerável"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 // ─── GHE (Grupos Homogêneos de Exposição) ────────────────────────────────────
-export const ghe = mysqlTable("ghe", {
-  id: int("id").autoincrement().primaryKey(),
-  unitId: int("unitId").notNull(),
-  code: varchar("code", { length: 50 }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  riskMapAreaId: int("riskMapAreaId"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({
-  uniqueCodePerUnit: unique().on(table.unitId, table.code),
-}));
+export const ghe = mysqlTable(
+  "ghe",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    unitId: int("unitId").notNull(),
+    code: varchar("code", { length: 50 }).notNull(),
+    location: varchar("location", { length: 255 }),
+    responsible: varchar("responsible", { length: 255 }),
+    status: mysqlEnum("status", ["Ativo", "Inativo", "Em Revisão"])
+      .default("Ativo")
+      .notNull(),
+    notes: text("notes"),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    riskMapAreaId: int("riskMapAreaId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    uniqueCodePerUnit: unique().on(table.unitId, table.code),
+  })
+);
 
 // ─── EMPLOYEE GHE MAPPING ────────────────────────────────────────────────────
 export const employeeGhe = mysqlTable("employee_ghe", {
@@ -418,9 +582,20 @@ export const employeeGhe = mysqlTable("employee_ghe", {
 export const gheExposureAgents = mysqlTable("ghe_exposure_agents", {
   id: int("id").autoincrement().primaryKey(),
   gheId: int("gheId").notNull(),
-  agentType: mysqlEnum("agentType", ["Químico", "Físico", "Biológico", "Ergonômico", "Acidente"]),
+  agentType: mysqlEnum("agentType", [
+    "Químico",
+    "Físico",
+    "Biológico",
+    "Ergonômico",
+    "Acidente",
+  ]),
   agentName: varchar("agentName", { length: 255 }).notNull(),
-  riskLevel: mysqlEnum("riskLevel", ["Tolerável", "Moderado", "Substancial", "Intolerável"]),
+  riskLevel: mysqlEnum("riskLevel", [
+    "Tolerável",
+    "Moderado",
+    "Substancial",
+    "Intolerável",
+  ]),
   limiteTolerance: decimal("limiteTolerance", { precision: 10, scale: 2 }),
   unit: varchar("unit", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -430,7 +605,12 @@ export const gheExposureAgents = mysqlTable("ghe_exposure_agents", {
 export const riskMapAreaHistory = mysqlTable("risk_map_area_history", {
   id: int("id").autoincrement().primaryKey(),
   areaId: int("areaId").notNull(),
-  changeType: mysqlEnum("changeType", ["position_update", "name_update", "risk_update", "rollback"]).notNull(),
+  changeType: mysqlEnum("changeType", [
+    "position_update",
+    "name_update",
+    "risk_update",
+    "rollback",
+  ]).notNull(),
   oldValue: text("oldValue"),
   newValue: text("newValue"),
   changedBy: int("changedBy").notNull(),
@@ -520,31 +700,57 @@ export type GheExposureAgent = typeof gheExposureAgents.$inferSelect;
 export type InsertGheExposureAgent = typeof gheExposureAgents.$inferInsert;
 
 // ─── ENVIRONMENTAL ASSESSMENTS (NR-09) ────────────────────────────────────────
-export const environmentalAssessments = mysqlTable("environmental_assessments", {
-  id: int("id").autoincrement().primaryKey(),
-  unitId: int("unitId").notNull(),
-  gheId: int("gheId").notNull(),
-  agentType: mysqlEnum("agentType", ["Químico", "Físico", "Biológico", "Ergonômico"]).notNull(),
-  agentName: varchar("agentName", { length: 255 }).notNull(),
-  measurementValue: decimal("measurementValue", { precision: 10, scale: 2 }).notNull(),
-  unit: varchar("unit", { length: 50 }),
-  limiteTolerance: decimal("limiteTolerance", { precision: 10, scale: 2 }),
-  status: mysqlEnum("status", ["Conforme", "Não Conforme", "Atenção"]).default("Conforme"),
-  date: date("date").notNull(),
-  responsible: varchar("responsible", { length: 255 }),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+export const environmentalAssessments = mysqlTable(
+  "environmental_assessments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    unitId: int("unitId").notNull(),
+    gheId: int("gheId").notNull(),
+    agentType: mysqlEnum("agentType", [
+      "Químico",
+      "Físico",
+      "Biológico",
+      "Ergonômico",
+    ]).notNull(),
+    agentName: varchar("agentName", { length: 255 }).notNull(),
+    measurementValue: decimal("measurementValue", {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+    unit: varchar("unit", { length: 50 }),
+    limiteTolerance: decimal("limiteTolerance", { precision: 10, scale: 2 }),
+    status: mysqlEnum("status", [
+      "Conforme",
+      "Não Conforme",
+      "Atenção",
+    ]).default("Conforme"),
+    date: date("date").notNull(),
+    responsible: varchar("responsible", { length: 255 }),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  }
+);
 
 // ─── TECHNICAL REPORTS (LAUDOS) ───────────────────────────────────────────────
 export const technicalReports = mysqlTable("technical_reports", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId").notNull(),
-  type: mysqlEnum("type", ["LTCAT", "PPP", "Laudo Ambiental", "Laudo Ergonômico"]).notNull(),
+  type: mysqlEnum("type", [
+    "LTCAT",
+    "PPP",
+    "Laudo Ambiental",
+    "Laudo Ergonômico",
+  ]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   author: varchar("author", { length: 255 }).notNull(),
-  status: mysqlEnum("status", ["Rascunho", "Aguardando Aprovação", "Aprovado", "Vigente", "Expirado"]).default("Rascunho"),
+  status: mysqlEnum("status", [
+    "Rascunho",
+    "Aguardando Aprovação",
+    "Aprovado",
+    "Vigente",
+    "Expirado",
+  ]).default("Rascunho"),
   validFrom: date("validFrom").notNull(),
   validUntil: date("validUntil").notNull(),
   content: text("content"),
@@ -562,7 +768,13 @@ export const technicalReportsHistory = mysqlTable("technical_reports_history", {
   id: int("id").autoincrement().primaryKey(),
   reportId: int("reportId").notNull(),
   version: int("version").notNull(),
-  status: mysqlEnum("status", ["Rascunho", "Aguardando Aprovação", "Aprovado", "Vigente", "Expirado"]).notNull(),
+  status: mysqlEnum("status", [
+    "Rascunho",
+    "Aguardando Aprovação",
+    "Aprovado",
+    "Vigente",
+    "Expirado",
+  ]).notNull(),
   approver: varchar("approver", { length: 255 }),
   approvedAt: timestamp("approvedAt"),
   notes: text("notes"),
@@ -573,7 +785,15 @@ export const technicalReportsHistory = mysqlTable("technical_reports_history", {
 export const pdfReports = mysqlTable("pdf_reports", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId").notNull(),
-  type: mysqlEnum("type", ["Acidentes", "PCMSO", "PPRA", "PGR", "CIPA", "Treinamentos", "Custos"]).notNull(),
+  type: mysqlEnum("type", [
+    "Acidentes",
+    "PCMSO",
+    "PPRA",
+    "PGR",
+    "CIPA",
+    "Treinamentos",
+    "Custos",
+  ]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   fileUrl: varchar("fileUrl", { length: 500 }),
   fileKey: varchar("fileKey", { length: 255 }),
@@ -591,7 +811,12 @@ export const esocialS2230 = mysqlTable("esocial_s2230", {
   employeeId: int("employeeId").notNull(),
   absenceId: int("absenceId").notNull(),
   eventType: varchar("eventType", { length: 10 }).default("S-2230").notNull(),
-  status: mysqlEnum("status", ["Rascunho", "Enviado", "Processado", "Rejeitado"]).default("Rascunho"),
+  status: mysqlEnum("status", [
+    "Rascunho",
+    "Enviado",
+    "Processado",
+    "Rejeitado",
+  ]).default("Rascunho"),
   esocialResponse: json("esocialResponse"),
   sentAt: timestamp("sentAt"),
   processedAt: timestamp("processedAt"),
@@ -600,12 +825,16 @@ export const esocialS2230 = mysqlTable("esocial_s2230", {
 });
 
 // ─── EXPORTS ─────────────────────────────────────────────────────────────────
-export type EnvironmentalAssessment = typeof environmentalAssessments.$inferSelect;
-export type InsertEnvironmentalAssessment = typeof environmentalAssessments.$inferInsert;
+export type EnvironmentalAssessment =
+  typeof environmentalAssessments.$inferSelect;
+export type InsertEnvironmentalAssessment =
+  typeof environmentalAssessments.$inferInsert;
 export type TechnicalReport = typeof technicalReports.$inferSelect;
 export type InsertTechnicalReport = typeof technicalReports.$inferInsert;
-export type TechnicalReportHistory = typeof technicalReportsHistory.$inferSelect;
-export type InsertTechnicalReportHistory = typeof technicalReportsHistory.$inferInsert;
+export type TechnicalReportHistory =
+  typeof technicalReportsHistory.$inferSelect;
+export type InsertTechnicalReportHistory =
+  typeof technicalReportsHistory.$inferInsert;
 export type PdfReport = typeof pdfReports.$inferSelect;
 export type InsertPdfReport = typeof pdfReports.$inferInsert;
 export type EsocialS2230 = typeof esocialS2230.$inferSelect;
@@ -615,13 +844,22 @@ export type InsertEsocialS2230 = typeof esocialS2230.$inferInsert;
 export const employeeDocuments = mysqlTable("employee_documents", {
   id: int("id").autoincrement().primaryKey(),
   employeeId: int("employeeId").notNull(),
-  documentType: mysqlEnum("documentType", ["Contrato", "Exame", "Treinamento", "EPI", "Laudo", "Outro"]).notNull(),
+  documentType: mysqlEnum("documentType", [
+    "Contrato",
+    "Exame",
+    "Treinamento",
+    "EPI",
+    "Laudo",
+    "Outro",
+  ]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   fileUrl: varchar("fileUrl", { length: 500 }),
   fileKey: varchar("fileKey", { length: 255 }),
   issueDate: date("issueDate"),
   expiryDate: date("expiryDate"),
-  status: mysqlEnum("status", ["Ativo", "Expirado", "Arquivado"]).default("Ativo"),
+  status: mysqlEnum("status", ["Ativo", "Expirado", "Arquivado"]).default(
+    "Ativo"
+  ),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -633,7 +871,12 @@ export const employeeTrainingAccess = mysqlTable("employee_training_access", {
   trainingId: int("trainingId").notNull(),
   accessDate: timestamp("accessDate").defaultNow().notNull(),
   completionDate: timestamp("completionDate"),
-  status: mysqlEnum("status", ["Pendente", "Em Progresso", "Concluído", "Expirado"]).default("Pendente"),
+  status: mysqlEnum("status", [
+    "Pendente",
+    "Em Progresso",
+    "Concluído",
+    "Expirado",
+  ]).default("Pendente"),
   certificateUrl: varchar("certificateUrl", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -641,7 +884,14 @@ export const employeeTrainingAccess = mysqlTable("employee_training_access", {
 export const employeeNotifications = mysqlTable("employee_notifications", {
   id: int("id").autoincrement().primaryKey(),
   employeeId: int("employeeId").notNull(),
-  type: mysqlEnum("type", ["Documento Expirado", "Treinamento Vencido", "EPI Necessário", "Não Conformidade", "Aviso", "Informação"]).notNull(),
+  type: mysqlEnum("type", [
+    "Documento Expirado",
+    "Treinamento Vencido",
+    "EPI Necessário",
+    "Não Conformidade",
+    "Aviso",
+    "Informação",
+  ]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message"),
   relatedId: int("relatedId"),
@@ -656,13 +906,26 @@ export const epcItems = mysqlTable("epc_items", {
   unitId: int("unitId").notNull(),
   sectorId: int("sectorId"),
   name: varchar("name", { length: 255 }).notNull(),
-  type: mysqlEnum("type", ["Proteção Respiratória", "Proteção Auditiva", "Proteção Visual", "Proteção de Extremidades", "Proteção de Corpo", "Proteção de Queda", "Outro"]).notNull(),
+  type: mysqlEnum("type", [
+    "Proteção Respiratória",
+    "Proteção Auditiva",
+    "Proteção Visual",
+    "Proteção de Extremidades",
+    "Proteção de Corpo",
+    "Proteção de Queda",
+    "Outro",
+  ]).notNull(),
   quantity: int("quantity").default(0),
   installationDate: date("installationDate"),
   lastMaintenanceDate: date("lastMaintenanceDate"),
   nextMaintenanceDate: date("nextMaintenanceDate"),
   maintenanceFrequency: varchar("maintenanceFrequency", { length: 50 }),
-  status: mysqlEnum("status", ["Operacional", "Em Manutenção", "Danificado", "Descartado"]).default("Operacional"),
+  status: mysqlEnum("status", [
+    "Operacional",
+    "Em Manutenção",
+    "Danificado",
+    "Descartado",
+  ]).default("Operacional"),
   responsible: varchar("responsible", { length: 255 }),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -673,7 +936,13 @@ export const epcMaintenanceRecords = mysqlTable("epc_maintenance_records", {
   id: int("id").autoincrement().primaryKey(),
   epcItemId: int("epcItemId").notNull(),
   maintenanceDate: date("maintenanceDate").notNull(),
-  type: mysqlEnum("type", ["Inspeção", "Limpeza", "Reparo", "Substituição", "Teste"]).notNull(),
+  type: mysqlEnum("type", [
+    "Inspeção",
+    "Limpeza",
+    "Reparo",
+    "Substituição",
+    "Teste",
+  ]).notNull(),
   responsible: varchar("responsible", { length: 255 }),
   notes: text("notes"),
   nextScheduledDate: date("nextScheduledDate"),
@@ -685,13 +954,31 @@ export const nonConformities = mysqlTable("non_conformities", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId").notNull(),
   sectorId: int("sectorId"),
-  type: mysqlEnum("type", ["NR Violada", "Procedimento Inadequado", "Equipamento Defeituoso", "Falta de Treinamento", "Outro"]).notNull(),
-  severity: mysqlEnum("severity", ["Baixa", "Média", "Alta", "Crítica"]).notNull(),
+  type: mysqlEnum("type", [
+    "NR Violada",
+    "Procedimento Inadequado",
+    "Equipamento Defeituoso",
+    "Falta de Treinamento",
+    "Outro",
+  ]).notNull(),
+  severity: mysqlEnum("severity", [
+    "Baixa",
+    "Média",
+    "Alta",
+    "Crítica",
+  ]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   detectedDate: date("detectedDate").notNull(),
   detectedBy: varchar("detectedBy", { length: 255 }),
-  status: mysqlEnum("status", ["Aberta", "Em Análise", "Plano de Ação", "Em Execução", "Fechada", "Cancelada"]).default("Aberta"),
+  status: mysqlEnum("status", [
+    "Aberta",
+    "Em Análise",
+    "Plano de Ação",
+    "Em Execução",
+    "Fechada",
+    "Cancelada",
+  ]).default("Aberta"),
   dueDate: date("dueDate"),
   closedDate: date("closedDate"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -705,7 +992,12 @@ export const nonConformityActions = mysqlTable("non_conformity_actions", {
   responsible: varchar("responsible", { length: 255 }),
   dueDate: date("dueDate"),
   completionDate: date("completionDate"),
-  status: mysqlEnum("status", ["Planejada", "Em Execução", "Concluída", "Atrasada"]).default("Planejada"),
+  status: mysqlEnum("status", [
+    "Planejada",
+    "Em Execução",
+    "Concluída",
+    "Atrasada",
+  ]).default("Planejada"),
   evidence: text("evidence"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -721,7 +1013,9 @@ export const auditLog = mysqlTable("audit_log", {
   newValue: text("newValue"),
   ipAddress: varchar("ipAddress", { length: 45 }),
   userAgent: text("userAgent"),
-  status: mysqlEnum("status", ["Sucesso", "Erro", "Acesso Negado"]).default("Sucesso"),
+  status: mysqlEnum("status", ["Sucesso", "Erro", "Acesso Negado"]).default(
+    "Sucesso"
+  ),
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -730,7 +1024,13 @@ export const changeLog = mysqlTable("change_log", {
   id: int("id").autoincrement().primaryKey(),
   entityType: varchar("entityType", { length: 100 }).notNull(),
   entityId: int("entityId").notNull(),
-  changeType: mysqlEnum("changeType", ["Criação", "Modificação", "Exclusão", "Aprovação", "Rejeição"]).notNull(),
+  changeType: mysqlEnum("changeType", [
+    "Criação",
+    "Modificação",
+    "Exclusão",
+    "Aprovação",
+    "Rejeição",
+  ]).notNull(),
   changedBy: varchar("changedBy", { length: 255 }),
   oldValue: text("oldValue"),
   newValue: text("newValue"),
@@ -757,24 +1057,27 @@ export const dataIntegrityChecks = mysqlTable("data_integrity_checks", {
 export type EmployeeDocument = typeof employeeDocuments.$inferSelect;
 export type InsertEmployeeDocument = typeof employeeDocuments.$inferInsert;
 export type EmployeeTrainingAccess = typeof employeeTrainingAccess.$inferSelect;
-export type InsertEmployeeTrainingAccess = typeof employeeTrainingAccess.$inferInsert;
+export type InsertEmployeeTrainingAccess =
+  typeof employeeTrainingAccess.$inferInsert;
 export type EmployeeNotification = typeof employeeNotifications.$inferSelect;
-export type InsertEmployeeNotification = typeof employeeNotifications.$inferInsert;
+export type InsertEmployeeNotification =
+  typeof employeeNotifications.$inferInsert;
 export type EpcItem = typeof epcItems.$inferSelect;
 export type InsertEpcItem = typeof epcItems.$inferInsert;
 export type EpcMaintenanceRecord = typeof epcMaintenanceRecords.$inferSelect;
-export type InsertEpcMaintenanceRecord = typeof epcMaintenanceRecords.$inferInsert;
+export type InsertEpcMaintenanceRecord =
+  typeof epcMaintenanceRecords.$inferInsert;
 export type NonConformity = typeof nonConformities.$inferSelect;
 export type InsertNonConformity = typeof nonConformities.$inferInsert;
 export type NonConformityAction = typeof nonConformityActions.$inferSelect;
-export type InsertNonConformityAction = typeof nonConformityActions.$inferInsert;
+export type InsertNonConformityAction =
+  typeof nonConformityActions.$inferInsert;
 export type AuditLog = typeof auditLog.$inferSelect;
 export type InsertAuditLog = typeof auditLog.$inferInsert;
 export type ChangeLog = typeof changeLog.$inferSelect;
 export type InsertChangeLog = typeof changeLog.$inferInsert;
 export type DataIntegrityCheck = typeof dataIntegrityChecks.$inferSelect;
 export type InsertDataIntegrityCheck = typeof dataIntegrityChecks.$inferInsert;
-
 
 // ─── FLUXO DE APROVAÇÃO E WORKFLOWS ───────────────────────────────────────────
 export const approvalWorkflows = mysqlTable("approval_workflows", {
@@ -807,7 +1110,13 @@ export const approvalRequests = mysqlTable("approval_requests", {
   entityId: int("entityId").notNull(),
   requestedBy: int("requestedBy").notNull(),
   currentStep: int("currentStep").default(1),
-  status: mysqlEnum("status", ["Pendente", "Em Análise", "Aprovado", "Rejeitado", "Cancelado"]).default("Pendente"),
+  status: mysqlEnum("status", [
+    "Pendente",
+    "Em Análise",
+    "Aprovado",
+    "Rejeitado",
+    "Cancelado",
+  ]).default("Pendente"),
   rejectionReason: text("rejectionReason"),
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -819,7 +1128,12 @@ export const approvalHistory = mysqlTable("approval_history", {
   requestId: int("requestId").notNull(),
   stepNumber: int("stepNumber").notNull(),
   approverUserId: int("approverUserId").notNull(),
-  action: mysqlEnum("action", ["Aprovado", "Rejeitado", "Comentário", "Devolvido"]).notNull(),
+  action: mysqlEnum("action", [
+    "Aprovado",
+    "Rejeitado",
+    "Comentário",
+    "Devolvido",
+  ]).notNull(),
   comment: text("comment"),
   approvedAt: timestamp("approvedAt").defaultNow().notNull(),
 });
@@ -830,7 +1144,13 @@ export const dashboards = mysqlTable("dashboards", {
   unitId: int("unitId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  type: mysqlEnum("type", ["Executivo", "Operacional", "Segurança", "Compliance", "Financeiro"]).notNull(),
+  type: mysqlEnum("type", [
+    "Executivo",
+    "Operacional",
+    "Segurança",
+    "Compliance",
+    "Financeiro",
+  ]).notNull(),
   layout: json("layout"),
   isPublic: boolean("isPublic").default(false),
   createdBy: int("createdBy").notNull(),
@@ -846,8 +1166,12 @@ export const kpis = mysqlTable("kpis", {
   value: decimal("value", { precision: 10, scale: 2 }),
   target: decimal("target", { precision: 10, scale: 2 }),
   unit: varchar("unit", { length: 50 }),
-  status: mysqlEnum("status", ["Ótimo", "Bom", "Atenção", "Crítico"]).default("Bom"),
-  trend: mysqlEnum("trend", ["Aumentando", "Estável", "Diminuindo"]).default("Estável"),
+  status: mysqlEnum("status", ["Ótimo", "Bom", "Atenção", "Crítico"]).default(
+    "Bom"
+  ),
+  trend: mysqlEnum("trend", ["Aumentando", "Estável", "Diminuindo"]).default(
+    "Estável"
+  ),
   lastUpdated: timestamp("lastUpdated").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -868,8 +1192,20 @@ export const analyticsReports = mysqlTable("analytics_reports", {
   id: int("id").autoincrement().primaryKey(),
   unitId: int("unitId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
-  type: mysqlEnum("type", ["Acidentes", "Treinamentos", "Conformidade", "Custos", "Indicadores"]).notNull(),
-  period: mysqlEnum("period", ["Diário", "Semanal", "Mensal", "Trimestral", "Anual"]).notNull(),
+  type: mysqlEnum("type", [
+    "Acidentes",
+    "Treinamentos",
+    "Conformidade",
+    "Custos",
+    "Indicadores",
+  ]).notNull(),
+  period: mysqlEnum("period", [
+    "Diário",
+    "Semanal",
+    "Mensal",
+    "Trimestral",
+    "Anual",
+  ]).notNull(),
   data: json("data"),
   generatedAt: timestamp("generatedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -885,7 +1221,9 @@ export const externalSystems = mysqlTable("external_systems", {
   apiKey: text("apiKey"),
   isActive: boolean("isActive").default(false),
   lastSync: timestamp("lastSync"),
-  syncStatus: mysqlEnum("syncStatus", ["Sucesso", "Erro", "Pendente"]).default("Pendente"),
+  syncStatus: mysqlEnum("syncStatus", ["Sucesso", "Erro", "Pendente"]).default(
+    "Pendente"
+  ),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -894,7 +1232,12 @@ export const syncLogs = mysqlTable("sync_logs", {
   id: int("id").autoincrement().primaryKey(),
   systemId: int("systemId").notNull(),
   syncType: varchar("syncType", { length: 100 }).notNull(),
-  status: mysqlEnum("status", ["Iniciado", "Processando", "Sucesso", "Erro"]).notNull(),
+  status: mysqlEnum("status", [
+    "Iniciado",
+    "Processando",
+    "Sucesso",
+    "Erro",
+  ]).notNull(),
   recordsProcessed: int("recordsProcessed").default(0),
   recordsSuccessful: int("recordsSuccessful").default(0),
   recordsFailed: int("recordsFailed").default(0),
@@ -956,10 +1299,14 @@ export const tenants = mysqlTable("tenants", {
   slug: varchar("slug", { length: 100 }).notNull().unique(),
   logo: varchar("logo", { length: 500 }),
   website: varchar("website", { length: 500 }),
-  plan: mysqlEnum("plan", ["free", "pro", "enterprise"]).default("free").notNull(),
+  plan: mysqlEnum("plan", ["free", "pro", "enterprise"])
+    .default("free")
+    .notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
-  status: mysqlEnum("status", ["active", "inactive", "suspended"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "inactive", "suspended"])
+    .default("active")
+    .notNull(),
   maxUsers: int("maxUsers").default(5),
   maxUnits: int("maxUnits").default(1),
   features: json("features"),
@@ -971,7 +1318,9 @@ export const tenantMembers = mysqlTable("tenant_members", {
   id: int("id").autoincrement().primaryKey(),
   tenantId: int("tenantId").notNull(),
   userId: int("userId").notNull(),
-  role: mysqlEnum("role", ["owner", "admin", "manager", "user"]).default("user").notNull(),
+  role: mysqlEnum("role", ["owner", "admin", "manager", "user"])
+    .default("user")
+    .notNull(),
   invitedAt: timestamp("invitedAt").defaultNow().notNull(),
   joinedAt: timestamp("joinedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -995,10 +1344,18 @@ export const subscriptionPlans = mysqlTable("subscription_plans", {
 export const subscriptionInvoices = mysqlTable("subscription_invoices", {
   id: int("id").autoincrement().primaryKey(),
   tenantId: int("tenantId").notNull(),
-  stripeInvoiceId: varchar("stripeInvoiceId", { length: 255 }).notNull().unique(),
+  stripeInvoiceId: varchar("stripeInvoiceId", { length: 255 })
+    .notNull()
+    .unique(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 3 }).default("USD"),
-  status: mysqlEnum("status", ["draft", "open", "paid", "void", "uncollectible"]).default("draft"),
+  status: mysqlEnum("status", [
+    "draft",
+    "open",
+    "paid",
+    "void",
+    "uncollectible",
+  ]).default("draft"),
   pdfUrl: varchar("pdfUrl", { length: 500 }),
   issuedAt: timestamp("issuedAt"),
   dueAt: timestamp("dueAt"),
@@ -1020,13 +1377,22 @@ export const sstDocuments = mysqlTable("sst_documents", {
     "APR",
     "ASO",
     "Ficha de Controle de EPI",
-    "Avaliação Ergonômica Preliminar"
+    "Avaliação Ergonômica Preliminar",
   ]).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   author: varchar("author", { length: 255 }).notNull(),
   authorId: int("authorId").notNull(),
-  status: mysqlEnum("status", ["Rascunho", "Aguardando Aprovação", "Aprovado", "Vigente", "Expirado", "Cancelado"]).default("Rascunho").notNull(),
+  status: mysqlEnum("status", [
+    "Rascunho",
+    "Aguardando Aprovação",
+    "Aprovado",
+    "Vigente",
+    "Expirado",
+    "Cancelado",
+  ])
+    .default("Rascunho")
+    .notNull(),
   revision: varchar("revision", { length: 20 }).default("Rev. 01").notNull(),
   validFrom: date("validFrom"),
   validUntil: date("validUntil"),
@@ -1054,7 +1420,14 @@ export const sstDocumentVersions = mysqlTable("sst_document_versions", {
   documentId: int("documentId").notNull(),
   version: int("version").notNull(),
   revision: varchar("revision", { length: 20 }).notNull(),
-  status: mysqlEnum("status", ["Rascunho", "Aguardando Aprovação", "Aprovado", "Vigente", "Expirado", "Cancelado"]).notNull(),
+  status: mysqlEnum("status", [
+    "Rascunho",
+    "Aguardando Aprovação",
+    "Aprovado",
+    "Vigente",
+    "Expirado",
+    "Cancelado",
+  ]).notNull(),
   fileKey: varchar("fileKey", { length: 500 }),
   fileUrl: varchar("fileUrl", { length: 1000 }),
   content: text("content"),
@@ -1068,10 +1441,23 @@ export const sstDocumentApprovals = mysqlTable("sst_document_approvals", {
   id: int("id").autoincrement().primaryKey(),
   documentId: int("documentId").notNull(),
   versionId: int("versionId"),
-  approverRole: mysqlEnum("approverRole", ["Técnico de SST", "Gerente", "Diretor", "Médico do Trabalho", "Engenheiro de Segurança"]).notNull(),
+  approverRole: mysqlEnum("approverRole", [
+    "Técnico de SST",
+    "Gerente",
+    "Diretor",
+    "Médico do Trabalho",
+    "Engenheiro de Segurança",
+  ]).notNull(),
   approverName: varchar("approverName", { length: 255 }).notNull(),
   approverId: int("approverId").notNull(),
-  status: mysqlEnum("status", ["Pendente", "Aprovado", "Rejeitado", "Revisão Solicitada"]).default("Pendente").notNull(),
+  status: mysqlEnum("status", [
+    "Pendente",
+    "Aprovado",
+    "Rejeitado",
+    "Revisão Solicitada",
+  ])
+    .default("Pendente")
+    .notNull(),
   comments: text("comments"),
   approvedAt: timestamp("approvedAt"),
   signature: text("signature"),
@@ -1109,7 +1495,9 @@ export const ltcatDocuments = mysqlTable("ltcat_documents", {
   unitId: int("unitId").notNull(),
   specialActivities: json("specialActivities"),
   exposureFactors: text("exposureFactors"),
-  conclusionSpecialRetirement: boolean("conclusionSpecialRetirement").default(false),
+  conclusionSpecialRetirement: boolean("conclusionSpecialRetirement").default(
+    false
+  ),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -1118,8 +1506,16 @@ export const ltipDocuments = mysqlTable("ltip_documents", {
   id: int("id").autoincrement().primaryKey(),
   documentId: int("documentId").notNull(),
   unitId: int("unitId").notNull(),
-  insalubrityLevel: mysqlEnum("insalubrityLevel", ["Mínimo", "Médio", "Máximo", "Nenhum"]).notNull(),
-  insalubrityPercentage: decimal("insalubrityPercentage", { precision: 5, scale: 2 }),
+  insalubrityLevel: mysqlEnum("insalubrityLevel", [
+    "Mínimo",
+    "Médio",
+    "Máximo",
+    "Nenhum",
+  ]).notNull(),
+  insalubrityPercentage: decimal("insalubrityPercentage", {
+    precision: 5,
+    scale: 2,
+  }),
   dangerLevel: mysqlEnum("dangerLevel", ["Presente", "Ausente"]).notNull(),
   dangerPercentage: decimal("dangerPercentage", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1131,11 +1527,18 @@ export const workOrderDocuments = mysqlTable("work_order_documents", {
   documentId: int("documentId").notNull(),
   unitId: int("unitId").notNull(),
   workDescription: text("workDescription").notNull(),
-  responsibleEmployee: varchar("responsibleEmployee", { length: 255 }).notNull(),
+  responsibleEmployee: varchar("responsibleEmployee", {
+    length: 255,
+  }).notNull(),
   responsibleEmployeeId: int("responsibleEmployeeId"),
   startDate: date("startDate").notNull(),
   endDate: date("endDate"),
-  priority: mysqlEnum("priority", ["Baixa", "Média", "Alta", "Urgente"]).default("Média"),
+  priority: mysqlEnum("priority", [
+    "Baixa",
+    "Média",
+    "Alta",
+    "Urgente",
+  ]).default("Média"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -1174,7 +1577,12 @@ export const asoDocuments = mysqlTable("aso_documents", {
   occupationalMedic: varchar("occupationalMedic", { length: 255 }).notNull(),
   occupationalMedicId: int("occupationalMedicId"),
   examsPerformed: json("examsPerformed"),
-  conclusion: mysqlEnum("conclusion", ["Apto", "Apto com Restrições", "Inapto", "Inapto Temporariamente"]).notNull(),
+  conclusion: mysqlEnum("conclusion", [
+    "Apto",
+    "Apto com Restrições",
+    "Inapto",
+    "Inapto Temporariamente",
+  ]).notNull(),
   restrictionDetails: text("restrictionDetails"),
   examinationDate: date("examinationDate").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1188,35 +1596,58 @@ export const epiControlDocuments = mysqlTable("epi_control_documents", {
   epiItems: json("epiItems"),
   deliveryDate: date("deliveryDate").notNull(),
   returnDate: date("returnDate"),
-  condition: mysqlEnum("condition", ["Novo", "Usado", "Danificado", "Devolvido"]).notNull(),
+  condition: mysqlEnum("condition", [
+    "Novo",
+    "Usado",
+    "Danificado",
+    "Devolvido",
+  ]).notNull(),
   employeeSignature: text("employeeSignature"),
   supervisorSignature: text("supervisorSignature"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ─── AVALIAÇÃO ERGONÔMICA PRELIMINAR ────────────────────────────────────────
-export const ergonomicAssessmentDocuments = mysqlTable("ergonomic_assessment_documents", {
-  id: int("id").autoincrement().primaryKey(),
-  documentId: int("documentId").notNull(),
-  unitId: int("unitId").notNull(),
-  workstationDescription: text("workstationDescription"),
-  postureAnalysis: text("postureAnalysis"),
-  risksIdentified: json("risksIdentified"),
-  recommendedImprovements: text("recommendedImprovements"),
-  priorityLevel: mysqlEnum("priorityLevel", ["Baixa", "Média", "Alta", "Crítica"]).default("Média"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const ergonomicAssessmentDocuments = mysqlTable(
+  "ergonomic_assessment_documents",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    documentId: int("documentId").notNull(),
+    unitId: int("unitId").notNull(),
+    workstationDescription: text("workstationDescription"),
+    postureAnalysis: text("postureAnalysis"),
+    risksIdentified: json("risksIdentified"),
+    recommendedImprovements: text("recommendedImprovements"),
+    priorityLevel: mysqlEnum("priorityLevel", [
+      "Baixa",
+      "Média",
+      "Alta",
+      "Crítica",
+    ]).default("Média"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  }
+);
 
 // ─── ENVIRONMENTAL ASSESSMENTS LINKED TO SST DOCUMENTS ─────────────
-export const sstDocumentAssessmentLinks = mysqlTable("sst_document_assessment_links", {
-  id: int("id").autoincrement().primaryKey(),
-  documentId: int("documentId").notNull(),
-  assessmentId: int("assessmentId").notNull(),
-  linkType: mysqlEnum("linkType", ["Fonte de Dados", "Referência", "Comprovação", "Histórico"]).default("Fonte de Dados").notNull(),
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  createdBy: int("createdBy").notNull(),
-});
+export const sstDocumentAssessmentLinks = mysqlTable(
+  "sst_document_assessment_links",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    documentId: int("documentId").notNull(),
+    assessmentId: int("assessmentId").notNull(),
+    linkType: mysqlEnum("linkType", [
+      "Fonte de Dados",
+      "Referência",
+      "Comprovação",
+      "Histórico",
+    ])
+      .default("Fonte de Dados")
+      .notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdBy: int("createdBy").notNull(),
+  }
+);
 
 // ─── EXPORTS ─────────────────────────────────────────────────────────────────
 export type ApprovalWorkflow = typeof approvalWorkflows.$inferSelect;

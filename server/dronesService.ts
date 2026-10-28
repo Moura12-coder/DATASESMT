@@ -1,6 +1,6 @@
 /**
  * Drones Service - Inspeções de Altura e Locais Perigosos
- * 
+ *
  * Funcionalidades:
  * - Controle de drones para inspeções
  * - Captura de imagens/vídeos
@@ -16,7 +16,7 @@ interface Drone {
   id: string;
   model: string;
   serialNumber: string;
-  status: 'available' | 'in_flight' | 'charging' | 'maintenance' | 'offline';
+  status: "available" | "in_flight" | "charging" | "maintenance" | "offline";
   batteryLevel: number;
   location: { latitude: number; longitude: number; altitude: number };
   lastMaintenance: Date;
@@ -27,15 +27,20 @@ interface InspectionMission {
   id: string;
   droneId: string;
   location: { latitude: number; longitude: number };
-  type: 'height_inspection' | 'roof_inspection' | 'equipment_check' | 'safety_audit' | 'thermal_imaging';
-  status: 'planned' | 'in_progress' | 'completed' | 'failed';
+  type:
+    | "height_inspection"
+    | "roof_inspection"
+    | "equipment_check"
+    | "safety_audit"
+    | "thermal_imaging";
+  status: "planned" | "in_progress" | "completed" | "failed";
   startTime?: Date;
   endTime?: Date;
   duration?: number; // em minutos
   photos: string[];
   videos: string[];
   findings: string[];
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  riskLevel: "low" | "medium" | "high" | "critical";
   createdBy: string;
 }
 
@@ -71,30 +76,30 @@ export class DronesService {
   private initializeDrones() {
     const drones: Drone[] = [
       {
-        id: 'drone-001',
-        model: 'DJI Matrice 300 RTK',
-        serialNumber: 'DJ-2024-001',
-        status: 'available',
+        id: "drone-001",
+        model: "DJI Matrice 300 RTK",
+        serialNumber: "DJ-2024-001",
+        status: "available",
         batteryLevel: 95,
         location: { latitude: -23.5505, longitude: -46.6333, altitude: 0 },
         lastMaintenance: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         flightHours: 245,
       },
       {
-        id: 'drone-002',
-        model: 'DJI Phantom 4 Pro',
-        serialNumber: 'DJ-2024-002',
-        status: 'available',
+        id: "drone-002",
+        model: "DJI Phantom 4 Pro",
+        serialNumber: "DJ-2024-002",
+        status: "available",
         batteryLevel: 88,
         location: { latitude: -23.5505, longitude: -46.6333, altitude: 0 },
         lastMaintenance: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
         flightHours: 512,
       },
       {
-        id: 'drone-003',
-        model: 'Freefly Alta X',
-        serialNumber: 'FF-2024-003',
-        status: 'charging',
+        id: "drone-003",
+        model: "Freefly Alta X",
+        serialNumber: "FF-2024-003",
+        status: "charging",
         batteryLevel: 45,
         location: { latitude: -23.5505, longitude: -46.6333, altitude: 0 },
         lastMaintenance: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
@@ -112,7 +117,7 @@ export class DronesService {
    */
   getAvailableDrones(): Drone[] {
     return Array.from(this.drones.values()).filter(
-      d => d.status === 'available' && d.batteryLevel > 30
+      d => d.status === "available" && d.batteryLevel > 30
     );
   }
 
@@ -129,13 +134,13 @@ export class DronesService {
   planMission(
     droneId: string,
     location: { latitude: number; longitude: number },
-    type: InspectionMission['type'],
+    type: InspectionMission["type"],
     createdBy: string
   ): InspectionMission {
     const drone = this.drones.get(droneId);
     if (!drone) throw new Error(`Drone ${droneId} não encontrado`);
 
-    if (drone.status !== 'available') {
+    if (drone.status !== "available") {
       throw new Error(`Drone ${droneId} não está disponível`);
     }
 
@@ -144,11 +149,11 @@ export class DronesService {
       droneId,
       location,
       type,
-      status: 'planned',
+      status: "planned",
       photos: [],
       videos: [],
       findings: [],
-      riskLevel: 'low',
+      riskLevel: "low",
       createdBy,
     };
 
@@ -169,16 +174,18 @@ export class DronesService {
     const drone = this.drones.get(mission.droneId);
     if (!drone) return false;
 
-    mission.status = 'in_progress';
+    mission.status = "in_progress";
     mission.startTime = new Date();
-    drone.status = 'in_flight';
+    drone.status = "in_flight";
     drone.location = {
       latitude: mission.location.latitude,
       longitude: mission.location.longitude,
       altitude: 50,
     };
 
-    console.log(`🚁 Drone ${drone.model} iniciando voo para missão ${missionId}`);
+    console.log(
+      `🚁 Drone ${drone.model} iniciando voo para missão ${missionId}`
+    );
 
     return true;
   }
@@ -213,7 +220,7 @@ export class DronesService {
 
     if (hasRisk) {
       mission.findings.push(`⚠️ ${description} - Risco: ${riskType}`);
-      mission.riskLevel = riskType === 'critical' ? 'critical' : 'high';
+      mission.riskLevel = riskType === "critical" ? "critical" : "high";
     }
 
     console.log(`📸 Imagem capturada: ${description}`);
@@ -231,18 +238,22 @@ export class DronesService {
     const drone = this.drones.get(mission.droneId);
     if (!drone) return null;
 
-    mission.status = 'completed';
+    mission.status = "completed";
     mission.endTime = new Date();
     mission.duration = mission.startTime
-      ? Math.round((mission.endTime.getTime() - mission.startTime.getTime()) / 60000)
+      ? Math.round(
+          (mission.endTime.getTime() - mission.startTime.getTime()) / 60000
+        )
       : 0;
 
-    drone.status = 'charging';
+    drone.status = "charging";
     drone.batteryLevel = 20;
     drone.flightHours += (mission.duration || 0) / 60;
     drone.location = { latitude: -23.5505, longitude: -46.6333, altitude: 0 };
 
-    console.log(`✅ Missão ${missionId} concluída em ${mission.duration} minutos`);
+    console.log(
+      `✅ Missão ${missionId} concluída em ${mission.duration} minutos`
+    );
 
     return mission;
   }
@@ -250,7 +261,7 @@ export class DronesService {
   /**
    * Obter missões
    */
-  getMissions(status?: InspectionMission['status']): InspectionMission[] {
+  getMissions(status?: InspectionMission["status"]): InspectionMission[] {
     let missions = Array.from(this.missions.values());
 
     if (status) {
@@ -268,7 +279,9 @@ export class DronesService {
     if (!mission) return null;
 
     const drone = this.drones.get(mission.droneId);
-    const missionImages = this.images.filter(img => img.missionId === missionId);
+    const missionImages = this.images.filter(
+      img => img.missionId === missionId
+    );
 
     return {
       mission,
@@ -289,7 +302,7 @@ export class DronesService {
    */
   generateInspectionReport(missionId: string): string {
     const details = this.getMissionDetails(missionId);
-    if (!details) return '';
+    if (!details) return "";
 
     const { mission, drone, summary } = details;
 
@@ -312,8 +325,8 @@ Local da Inspeção:
   Longitude:        ${mission.location.longitude}
 
 Dados da Missão:
-  Data Início:      ${mission.startTime?.toLocaleString('pt-BR')}
-  Data Fim:         ${mission.endTime?.toLocaleString('pt-BR')}
+  Data Início:      ${mission.startTime?.toLocaleString("pt-BR")}
+  Data Fim:         ${mission.endTime?.toLocaleString("pt-BR")}
   Duração:          ${summary.duration} minutos
   
 Resultados:
@@ -323,10 +336,10 @@ Resultados:
   Nível de Risco:   ${summary.riskLevel.toUpperCase()}
 
 Achados Detalhados:
-${mission.findings.map(f => `  • ${f}`).join('\n')}
+${mission.findings.map((f: string) => `  • ${f}`).join("\n")}
 
 Criado por:         ${mission.createdBy}
-Data do Relatório:  ${new Date().toLocaleString('pt-BR')}
+Data do Relatório:  ${new Date().toLocaleString("pt-BR")}
 
 ═══════════════════════════════════════════════════════════════════
     `;
@@ -341,7 +354,7 @@ Data do Relatório:  ${new Date().toLocaleString('pt-BR')}
     const drone = this.drones.get(droneId);
     if (!drone) return false;
 
-    drone.status = 'maintenance';
+    drone.status = "maintenance";
     drone.lastMaintenance = new Date();
 
     console.log(`🔧 Drone ${drone.model} agendado para manutenção`);
@@ -356,7 +369,7 @@ Data do Relatório:  ${new Date().toLocaleString('pt-BR')}
     const drone = this.drones.get(droneId);
     if (!drone) return false;
 
-    drone.status = 'available';
+    drone.status = "available";
     drone.batteryLevel = 100;
 
     console.log(`✅ Manutenção concluída para ${drone.model}`);
@@ -371,12 +384,18 @@ Data do Relatório:  ${new Date().toLocaleString('pt-BR')}
     const drones = Array.from(this.drones.values());
     const missions = Array.from(this.missions.values());
 
-    const availableDrones = drones.filter(d => d.status === 'available').length;
-    const inFlightDrones = drones.filter(d => d.status === 'in_flight').length;
-    const completedMissions = missions.filter(m => m.status === 'completed').length;
-    const inProgressMissions = missions.filter(m => m.status === 'in_progress').length;
+    const availableDrones = drones.filter(d => d.status === "available").length;
+    const inFlightDrones = drones.filter(d => d.status === "in_flight").length;
+    const completedMissions = missions.filter(
+      m => m.status === "completed"
+    ).length;
+    const inProgressMissions = missions.filter(
+      m => m.status === "in_progress"
+    ).length;
     const totalFlightHours = drones.reduce((sum, d) => sum + d.flightHours, 0);
-    const criticalFindings = missions.filter(m => m.riskLevel === 'critical').length;
+    const criticalFindings = missions.filter(
+      m => m.riskLevel === "critical"
+    ).length;
 
     return {
       totalDrones: drones.length,
@@ -404,9 +423,9 @@ Data do Relatório:  ${new Date().toLocaleString('pt-BR')}
 
     // Simular captura de imagens
     const findings = [
-      { desc: 'Estrutura em bom estado', risk: false },
-      { desc: 'Pequena rachadura detectada', risk: true, type: 'medium' },
-      { desc: 'Corrosão em parafuso', risk: true, type: 'low' },
+      { desc: "Estrutura em bom estado", risk: false },
+      { desc: "Pequena rachadura detectada", risk: true, type: "medium" },
+      { desc: "Corrosão em parafuso", risk: true, type: "low" },
     ];
 
     for (const finding of findings) {

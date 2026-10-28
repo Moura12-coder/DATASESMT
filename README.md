@@ -1,3 +1,5 @@
+> Atualizações de segurança e instruções de implantação: [DEPLOYMENT.md](DEPLOYMENT.md). Os limites e módulos demonstrativos ainda existentes estão descritos nesse documento.
+
 # Web App Template (tRPC + Manus Auth + Database)
 
 This template gives you a React 19 + Tailwind 4 + Express 4 + tRPC 11 stack with Manus OAuth already wired. Procedures are your contracts, types flow end to end, and authentication "just works".
@@ -1038,5 +1040,6 @@ await createInvite.mutateAsync({ eventId: "123", origin: window.location.origin 
 // Backend - use input.origin to build the URL
 const inviteUrl = `${input.origin}/events/${eventId}/join?token=${token}`;
 ```
-#   D A T A S E S M T  
+#   D A T A S E S M T 
+ 
  

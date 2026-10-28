@@ -1,145 +1,101 @@
 import { getDb } from "./db";
-import { ghe } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
-
-/**
- * Atualizar GHE existente
- */
-export async function updateGHE(gheId: number, data: {
-  code?: string;
-  name?: string;
-  description?: string;
-  responsible?: string;
-  location?: string;
-  status?: "Ativo" | "Inativo" | "Em Revisão";
-  notes?: string;
-}) {
-  try {
-    // Validações
-    if (data.code && data.code.length < 3) {
-      throw new Error("Código deve ter no mínimo 3 caracteres");
-    }
-    if (data.name && data.name.trim().length === 0) {
-      throw new Error("Nome não pode estar vazio");
-    }
-    if (data.responsible && data.responsible.trim().length === 0) {
-      throw new Error("Responsável não pode estar vazio");
-    }
-    if (data.location && data.location.trim().length === 0) {
-      throw new Error("Localização não pode estar vazia");
-    }
-
-    // Verificar se GHE existe
-    const existingGHE = await (await getDb()).query.ghe.findFirst({
-      where: eq(ghe.id, gheId),
-    });
-
-    if (!existingGHE) {
-      throw new Error(`GHE com ID ${gheId} não encontrado`);
-    }
-
-    // Verificar se código já existe (se estiver sendo alterado)
-    if (data.code && data.code !== existingGHE.code) {
-      const codeExists = await (await getDb()).query.ghe.findFirst({
-        where: eq(ghe.code, data.code),
-      });
-      if (codeExists) {
-        throw new Error(`Código ${data.code} já está em uso`);
-      }
-    }
-
-    // Preparar dados para atualização
-    const updateData: any = {};
-    if (data.code !== undefined) updateData.code = data.code;
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.description !== undefined) updateData.description = data.description;
-    if (data.responsible !== undefined) updateData.responsible = data.responsible;
-    if (data.location !== undefined) updateData.location = data.location;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.notes !== undefined) updateData.notes = data.notes;
-    updateData.updatedAt = new Date();
-
-    // Atualizar GHE
-    const result = await db
-      .update(ghe)
-      .set(updateData)
-      .where(eq(ghe.id, gheId))
-      .returning();
-
-    return result[0];
-  } catch (error) {
-    console.error("Erro ao atualizar GHE:", error);
-    throw error;
-  }
-}
-
-/**
- * Obter GHE por ID com todos os dados
- */
+import {
+  ghe,
+  gheExposureAgents,
+  employeeGhe,
+  employees,
+} from "../drizzle/schema";
+import { eq, and, like, or } from "drizzle-orm";
 export async function getGHEById(gheId: number) {
-  try {
-    const result = await (await getDb()).query.ghe.findFirst({
-      where: eq(ghe.id, gheId),
-    });
-
-    if (!result) {
-      throw new Error(`GHE com ID ${gheId} não encontrado`);
-    }
-
-    return result;
-  } catch (error) {
-    console.error("Erro ao obter GHE:", error);
-    throw error;
-  }
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [record] = await db
+    .select()
+    .from(ghe)
+    .where(eq(ghe.id, gheId))
+    .limit(1);
+  if (!record) throw new Error(`GHE com ID ${gheId} não encontrado`);
+  const agents = await db
+    .select()
+    .from(gheExposureAgents)
+    .where(eq(gheExposureAgents.gheId, gheId));
+  const members = await db
+    .select({
+      id: employeeGhe.id,
+      startDate: employeeGhe.startDate,
+      endDate: employeeGhe.endDate,
+      employee: employees,
+    })
+    .from(employeeGhe)
+    .innerJoin(employees, eq(employees.id, employeeGhe.employeeId))
+    .where(eq(employeeGhe.gheId, gheId));
+  return { ...record, exposureAgents: agents, employees: members };
 }
-
-/**
- * Listar GHEs com filtros opcionais
- */
-export async function listGHEsFiltered(unitId: number, filters?: {
-  status?: "Ativo" | "Inativo" | "Em Revisão";
-  searchTerm?: string;
-}) {
-  try {
-    let query = (await getDb()).query.ghe.findMany({
-      where: eq(ghe.unitId, unitId),
-    });
-
-    // Aplicar filtros se fornecidos
-    // Nota: Drizzle ORM requer construção de query diferente para múltiplos filtros
-    // Este é um exemplo simplificado
-
-    return query;
-  } catch (error) {
-    console.error("Erro ao listar GHEs:", error);
-    throw error;
+export async function updateGHE(
+  gheId: number,
+  data: {
+    code?: string;
+    name?: string;
+    description?: string;
+    responsible?: string;
+    location?: string;
+    status?: "Ativo" | "Inativo" | "Em Revisão";
+    notes?: string;
   }
+) {
+  if (data.code && data.code.trim().length < 3)
+    throw new Error("Código deve ter no mínimo 3 caracteres");
+  for (const key of ["name", "responsible", "location"] as const)
+    if (data[key] !== undefined && !data[key]?.trim())
+      throw new Error(`${key} não pode estar vazio`);
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await getGHEById(gheId);
+  if (data.code && data.code !== existing.code) {
+    const [duplicate] = await db
+      .select({ id: ghe.id })
+      .from(ghe)
+      .where(and(eq(ghe.code, data.code), eq(ghe.unitId, existing.unitId)))
+      .limit(1);
+    if (duplicate)
+      throw new Error(`Código ${data.code} já está em uso nesta unidade`);
+  }
+  await db
+    .update(ghe)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(ghe.id, gheId));
+  return getGHEById(gheId);
 }
-
-/**
- * Obter estatísticas de GHE
- */
+export async function listGHEsFiltered(
+  unitId: number,
+  filters?: { status?: "Ativo" | "Inativo" | "Em Revisão"; searchTerm?: string }
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const conditions = [eq(ghe.unitId, unitId)];
+  if (filters?.status) conditions.push(eq(ghe.status, filters.status));
+  if (filters?.searchTerm)
+    conditions.push(
+      or(
+        like(ghe.code, `%${filters.searchTerm}%`),
+        like(ghe.name, `%${filters.searchTerm}%`)
+      )!
+    );
+  return db
+    .select()
+    .from(ghe)
+    .where(and(...conditions))
+    .orderBy(ghe.code);
+}
 export async function getGHEStats(gheId: number) {
-  try {
-    const gheData = await getGHEById(gheId);
-
-    // Contar agentes de exposição
-    const agentsCount = gheData.exposureAgents?.length || 0;
-
-    // Contar funcionários
-    const employeesCount = gheData.employees?.length || 0;
-
-    return {
-      gheId,
-      gheCode: gheData.code,
-      gheName: gheData.name,
-      agentsCount,
-      employeesCount,
-      status: gheData.status || "Ativo",
-      lastUpdated: gheData.updatedAt,
-    };
-  } catch (error) {
-    console.error("Erro ao obter estatísticas de GHE:", error);
-    throw error;
-  }
+  const data = await getGHEById(gheId);
+  return {
+    gheId,
+    gheCode: data.code,
+    gheName: data.name,
+    agentsCount: data.exposureAgents.length,
+    employeesCount: data.employees.filter(member => !member.endDate).length,
+    status: data.status,
+    lastUpdated: data.updatedAt,
+  };
 }

@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
+import { ENV } from "./env";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -28,21 +29,35 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      const existing = await db.getUserByOpenId(userInfo.openId);
+      const registrationStatus =
+        existing?.registrationStatus ??
+        (userInfo.openId === ENV.ownerOpenId ? "approved" : "pending");
       await db.upsertUser({
         openId: userInfo.openId,
+        registrationStatus,
         name: userInfo.name || null,
         email: userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
 
+      if (registrationStatus !== "approved") {
+        res
+          .status(403)
+          .json({ error: "Cadastro pendente de aprovação pelo administrador" });
+        return;
+      }
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",
         expiresInMs: ONE_YEAR_MS,
       });
 
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: ONE_YEAR_MS,
+      });
 
       res.redirect(302, "/");
     } catch (error) {

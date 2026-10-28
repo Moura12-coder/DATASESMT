@@ -1,6 +1,6 @@
 /**
  * Machine Learning Service - Previsão de Riscos SST
- * 
+ *
  * Funcionalidades:
  * - Análise de tendências de acidentes
  * - Previsão de riscos por setor
@@ -8,7 +8,7 @@
  * - Recomendações automáticas
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 // ============================================================================
 // TIPOS
@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 interface RiskPrediction {
   sector: string;
-  riskLevel: 'Baixo' | 'Médio' | 'Alto' | 'Crítico';
+  riskLevel: "Baixo" | "Médio" | "Alto" | "Crítico";
   probability: number;
   confidence: number;
   factors: string[];
@@ -25,8 +25,8 @@ interface RiskPrediction {
 }
 
 interface AnomalyDetection {
-  type: 'accident' | 'absence' | 'training' | 'compliance';
-  severity: 'low' | 'medium' | 'high';
+  type: "accident" | "absence" | "training" | "compliance";
+  severity: "low" | "medium" | "high";
   description: string;
   affectedEntities: string[];
   suggestedAction: string;
@@ -57,41 +57,44 @@ export class MLService {
    * Inicializar modelos de ML
    */
   private initializeModels() {
-    this.models.set('risk-prediction', {
-      name: 'Risk Prediction Model',
+    this.models.set("risk-prediction", {
+      name: "Risk Prediction Model",
       accuracy: 0.87,
       precision: 0.89,
       recall: 0.85,
       f1Score: 0.87,
-      lastTrained: new Date('2026-05-15'),
-      version: '1.0.0',
+      lastTrained: new Date("2026-05-15"),
+      version: "1.0.0",
     });
 
-    this.models.set('anomaly-detection', {
-      name: 'Anomaly Detection Model',
+    this.models.set("anomaly-detection", {
+      name: "Anomaly Detection Model",
       accuracy: 0.92,
       precision: 0.94,
-      recall: 0.90,
+      recall: 0.9,
       f1Score: 0.92,
-      lastTrained: new Date('2026-05-15'),
-      version: '1.0.0',
+      lastTrained: new Date("2026-05-15"),
+      version: "1.0.0",
     });
 
-    this.models.set('trend-analysis', {
-      name: 'Trend Analysis Model',
+    this.models.set("trend-analysis", {
+      name: "Trend Analysis Model",
       accuracy: 0.84,
       precision: 0.86,
       recall: 0.82,
       f1Score: 0.84,
-      lastTrained: new Date('2026-05-15'),
-      version: '1.0.0',
+      lastTrained: new Date("2026-05-15"),
+      version: "1.0.0",
     });
   }
 
   /**
    * Prever riscos por setor
    */
-  async predictRisksBySector(sectorId: string, historicalData: any[]): Promise<RiskPrediction> {
+  async predictRisksBySector(
+    sectorId: string,
+    historicalData: any[]
+  ): Promise<RiskPrediction> {
     try {
       // Extrair features dos dados históricos
       const features = this.extractFeatures(historicalData);
@@ -115,8 +118,8 @@ export class MLService {
         predictedDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
       };
     } catch (error) {
-      console.error('Erro na previsão de riscos:', error);
-      throw new Error('Falha ao prever riscos');
+      console.error("Erro na previsão de riscos:", error);
+      throw new Error("Falha ao prever riscos");
     }
   }
 
@@ -148,13 +151,13 @@ export class MLService {
   /**
    * Análise de tendências
    */
-  async analyzeTrends(data: any[], period: 'monthly' | 'quarterly' | 'yearly') {
+  async analyzeTrends(data: any[], period: "monthly" | "quarterly" | "yearly") {
     const trends = {
-      accidents: this.calculateTrend(data, 'accidents', period),
-      absences: this.calculateTrend(data, 'absences', period),
-      trainings: this.calculateTrend(data, 'trainings', period),
-      compliance: this.calculateTrend(data, 'compliance', period),
-      costs: this.calculateTrend(data, 'costs', period),
+      accidents: this.calculateTrend(data, "accidents", period),
+      absences: this.calculateTrend(data, "absences", period),
+      trainings: this.calculateTrend(data, "trainings", period),
+      compliance: this.calculateTrend(data, "compliance", period),
+      costs: this.calculateTrend(data, "costs", period),
     };
 
     return {
@@ -173,7 +176,10 @@ export class MLService {
 
     // Análise de riscos
     const riskPrediction = await this.predictRisksBySector(unitId, data);
-    if (riskPrediction.riskLevel === 'Alto' || riskPrediction.riskLevel === 'Crítico') {
+    if (
+      riskPrediction.riskLevel === "Alto" ||
+      riskPrediction.riskLevel === "Crítico"
+    ) {
       recommendations.push(...riskPrediction.recommendations);
     }
 
@@ -184,12 +190,14 @@ export class MLService {
     });
 
     // Análise de tendências
-    const trends = await this.analyzeTrends(data, 'monthly');
-    if (trends.trends.accidents.direction === 'up') {
-      recommendations.push('⚠️ Acidentes em tendência de aumento - revisar procedimentos');
+    const trends = await this.analyzeTrends(data, "monthly");
+    if (trends.trends.accidents.direction === "up") {
+      recommendations.push(
+        "⚠️ Acidentes em tendência de aumento - revisar procedimentos"
+      );
     }
 
-    return [...new Set(recommendations)]; // Remove duplicatas
+    return Array.from(new Set(recommendations)); // Remove duplicatas
   }
 
   /**
@@ -210,7 +218,7 @@ export class MLService {
 
     // Simular treinamento
     const model = this.models.get(modelName);
-    if (!model) throw new Error('Modelo não encontrado');
+    if (!model) throw new Error("Modelo não encontrado");
 
     // Atualizar métricas (simulado)
     const updatedModel: MLModel = {
@@ -262,27 +270,34 @@ export class MLService {
     return Math.max(0, Math.min(1, score)); // Normalizar entre 0 e 1
   }
 
-  private determineRiskLevel(score: number): 'Baixo' | 'Médio' | 'Alto' | 'Crítico' {
-    if (score < 0.25) return 'Baixo';
-    if (score < 0.5) return 'Médio';
-    if (score < 0.75) return 'Alto';
-    return 'Crítico';
+  private determineRiskLevel(
+    score: number
+  ): "Baixo" | "Médio" | "Alto" | "Crítico" {
+    if (score < 0.25) return "Baixo";
+    if (score < 0.5) return "Médio";
+    if (score < 0.75) return "Alto";
+    return "Crítico";
   }
 
   private calculateConfidence(features: any): number {
     // Confiança baseada na quantidade de dados
-    const dataPoints = Object.values(features).filter(v => v !== null && v !== undefined).length;
+    const dataPoints = Object.values(features).filter(
+      v => v !== null && v !== undefined
+    ).length;
     return Math.min(1, dataPoints / 10);
   }
 
   private identifyRiskFactors(features: any): string[] {
     const factors: string[] = [];
 
-    if (features.accidentRate > 0.3) factors.push('Taxa de acidentes elevada');
-    if (features.absenceRate > 0.2) factors.push('Absentismo acima do esperado');
-    if (features.trainingCompletion < 0.8) factors.push('Treinamentos incompletos');
-    if (features.complianceScore < 0.7) factors.push('Conformidade baixa');
-    if (features.epcCondition < 0.6) factors.push('Condição de EPCs inadequada');
+    if (features.accidentRate > 0.3) factors.push("Taxa de acidentes elevada");
+    if (features.absenceRate > 0.2)
+      factors.push("Absentismo acima do esperado");
+    if (features.trainingCompletion < 0.8)
+      factors.push("Treinamentos incompletos");
+    if (features.complianceScore < 0.7) factors.push("Conformidade baixa");
+    if (features.epcCondition < 0.6)
+      factors.push("Condição de EPCs inadequada");
 
     return factors;
   }
@@ -290,20 +305,20 @@ export class MLService {
   private generateRecommendations(riskLevel: string, features: any): string[] {
     const recommendations: string[] = [];
 
-    if (riskLevel === 'Alto' || riskLevel === 'Crítico') {
-      recommendations.push('🚨 Realizar inspeção imediata de segurança');
-      recommendations.push('📋 Revisar procedimentos de trabalho');
-      recommendations.push('👥 Intensificar treinamentos de SST');
+    if (riskLevel === "Alto" || riskLevel === "Crítico") {
+      recommendations.push("🚨 Realizar inspeção imediata de segurança");
+      recommendations.push("📋 Revisar procedimentos de trabalho");
+      recommendations.push("👥 Intensificar treinamentos de SST");
     }
 
     if (features.accidentRate > 0.3) {
-      recommendations.push('🔍 Investigar causas raiz dos acidentes recentes');
-      recommendations.push('🛡️ Revisar EPCs e equipamentos de proteção');
+      recommendations.push("🔍 Investigar causas raiz dos acidentes recentes");
+      recommendations.push("🛡️ Revisar EPCs e equipamentos de proteção");
     }
 
     if (features.trainingCompletion < 0.8) {
-      recommendations.push('📚 Agendar treinamentos pendentes');
-      recommendations.push('✓ Atualizar certificações vencidas');
+      recommendations.push("📚 Agendar treinamentos pendentes");
+      recommendations.push("✓ Atualizar certificações vencidas");
     }
 
     return recommendations;
@@ -311,13 +326,13 @@ export class MLService {
 
   private calculateAccidentRate(data: any[]): number {
     if (data.length === 0) return 0;
-    const accidents = data.filter(d => d.type === 'accident').length;
+    const accidents = data.filter(d => d.type === "accident").length;
     return accidents / data.length;
   }
 
   private calculateAbsenceRate(data: any[]): number {
     if (data.length === 0) return 0;
-    const absences = data.filter(d => d.type === 'absence').length;
+    const absences = data.filter(d => d.type === "absence").length;
     return absences / data.length;
   }
 
@@ -335,7 +350,7 @@ export class MLService {
 
   private assessEPCCondition(data: any[]): number {
     if (data.length === 0) return 0.5;
-    const goodCondition = data.filter(d => d.epc?.condition === 'good').length;
+    const goodCondition = data.filter(d => d.epc?.condition === "good").length;
     return goodCondition / data.length;
   }
 
@@ -345,28 +360,33 @@ export class MLService {
   }
 
   private detectAccidentAnomaly(data: any[]): AnomalyDetection | null {
-    const recentAccidents = data.filter(d => d.type === 'accident' && this.isRecent(d.date)).length;
+    const recentAccidents = data.filter(
+      d => d.type === "accident" && this.isRecent(d.date)
+    ).length;
     if (recentAccidents > 3) {
       return {
-        type: 'accident',
-        severity: 'high',
+        type: "accident",
+        severity: "high",
         description: `${recentAccidents} acidentes detectados nos últimos 7 dias`,
-        affectedEntities: ['Múltiplos setores'],
-        suggestedAction: '🚨 Investigar imediatamente - possível padrão de acidentes',
+        affectedEntities: ["Múltiplos setores"],
+        suggestedAction:
+          "🚨 Investigar imediatamente - possível padrão de acidentes",
       };
     }
     return null;
   }
 
   private detectAbsenceAnomaly(data: any[]): AnomalyDetection | null {
-    const recentAbsences = data.filter(d => d.type === 'absence' && this.isRecent(d.date)).length;
+    const recentAbsences = data.filter(
+      d => d.type === "absence" && this.isRecent(d.date)
+    ).length;
     if (recentAbsences > 10) {
       return {
-        type: 'absence',
-        severity: 'medium',
+        type: "absence",
+        severity: "medium",
         description: `${recentAbsences} ausências detectadas nos últimos 7 dias`,
-        affectedEntities: ['Múltiplos setores'],
-        suggestedAction: '⚠️ Investigar causas de absentismo elevado',
+        affectedEntities: ["Múltiplos setores"],
+        suggestedAction: "⚠️ Investigar causas de absentismo elevado",
       };
     }
     return null;
@@ -376,11 +396,11 @@ export class MLService {
     const pendingTrainings = data.filter(d => d.training?.pending).length;
     if (pendingTrainings > 20) {
       return {
-        type: 'training',
-        severity: 'medium',
+        type: "training",
+        severity: "medium",
         description: `${pendingTrainings} treinamentos pendentes`,
-        affectedEntities: ['Múltiplos funcionários'],
-        suggestedAction: '📚 Agendar treinamentos pendentes urgentemente',
+        affectedEntities: ["Múltiplos funcionários"],
+        suggestedAction: "📚 Agendar treinamentos pendentes urgentemente",
       };
     }
     return null;
@@ -390,11 +410,11 @@ export class MLService {
     const nonCompliant = data.filter(d => !d.compliant).length;
     if (nonCompliant > data.length * 0.3) {
       return {
-        type: 'compliance',
-        severity: 'high',
+        type: "compliance",
+        severity: "high",
         description: `${nonCompliant} itens fora de conformidade`,
-        affectedEntities: ['Múltiplas áreas'],
-        suggestedAction: '⚠️ Revisar conformidade com NRs - risco de auditoria',
+        affectedEntities: ["Múltiplas áreas"],
+        suggestedAction: "⚠️ Revisar conformidade com NRs - risco de auditoria",
       };
     }
     return null;
@@ -403,7 +423,7 @@ export class MLService {
   private calculateTrend(data: any[], metric: string, period: string): any {
     const current = Math.random() * 100;
     const previous = Math.random() * 100;
-    const direction = current > previous ? 'up' : 'down';
+    const direction = current > previous ? "up" : "down";
     const change = Math.abs(current - previous);
 
     return {
@@ -418,16 +438,16 @@ export class MLService {
   private generateInsights(trends: any): string[] {
     const insights: string[] = [];
 
-    if (trends.accidents.direction === 'up') {
-      insights.push('📈 Acidentes em tendência de aumento');
+    if (trends.accidents.direction === "up") {
+      insights.push("📈 Acidentes em tendência de aumento");
     }
 
-    if (trends.trainings.direction === 'down') {
-      insights.push('📉 Treinamentos em queda - revisar cronograma');
+    if (trends.trainings.direction === "down") {
+      insights.push("📉 Treinamentos em queda - revisar cronograma");
     }
 
-    if (trends.compliance.direction === 'down') {
-      insights.push('⚠️ Conformidade em queda - ação corretiva necessária');
+    if (trends.compliance.direction === "down") {
+      insights.push("⚠️ Conformidade em queda - ação corretiva necessária");
     }
 
     return insights;

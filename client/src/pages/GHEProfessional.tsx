@@ -1,15 +1,41 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, Plus, Trash2, Users, Edit2, CheckCircle2, AlertTriangle } from "lucide-react";
+import {
+  AlertCircle,
+  Plus,
+  Trash2,
+  Users,
+  Edit2,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface GHEFormData {
@@ -55,9 +81,18 @@ export default function GHEProfessional() {
   });
 
   // Queries
-  const { data: gheList, refetch: refetchGHEs } = trpc.phase1.ghe.list.useQuery({ unitId });
-  const { data: employees } = selectedGHE ? trpc.phase1.ghe.getEmployees.useQuery({ gheId: selectedGHE }) : { data: [] };
-  const { data: exposureAgents, refetch: refetchAgents } = selectedGHE ? trpc.phase1.ghe.getExposureAgents.useQuery({ gheId: selectedGHE }) : { data: [] };
+  const { data: gheList, refetch: refetchGHEs } = trpc.phase1.ghe.list.useQuery(
+    { unitId }
+  );
+  const { data: employees } = trpc.phase1.ghe.getEmployees.useQuery(
+    { gheId: selectedGHE || 0 },
+    { enabled: !!selectedGHE }
+  );
+  const { data: exposureAgents, refetch: refetchAgents } =
+    trpc.phase1.ghe.getExposureAgents.useQuery(
+      { gheId: selectedGHE || 0 },
+      { enabled: !!selectedGHE }
+    );
 
   // Mutations
   const createGHEMutation = trpc.phase1.ghe.create.useMutation({
@@ -67,7 +102,7 @@ export default function GHEProfessional() {
       setShowCreateDialog(false);
       refetchGHEs();
     },
-    onError: (error) => toast.error(`Erro: ${error.message}`),
+    onError: error => toast.error(`Erro: ${error.message}`),
   });
 
   const deleteGHEMutation = trpc.phase1.ghe.delete.useMutation({
@@ -78,16 +113,23 @@ export default function GHEProfessional() {
       setShowDeleteConfirm(false);
       refetchGHEs();
     },
-    onError: (error) => toast.error(`Erro ao excluir: ${error.message}`),
+    onError: error => toast.error(`Erro ao excluir: ${error.message}`),
   });
 
   const addAgentMutation = trpc.phase1.ghe.addExposureAgent.useMutation({
     onSuccess: () => {
       toast.success("Agente de exposição adicionado");
-      setNewAgentForm({ agentType: "Químico", agentName: "", riskLevel: "Moderado", limiteTolerance: "", unit: "", notes: "" });
+      setNewAgentForm({
+        agentType: "Químico",
+        agentName: "",
+        riskLevel: "Moderado",
+        limiteTolerance: "",
+        unit: "",
+        notes: "",
+      });
       refetchAgents();
     },
-    onError: (error) => toast.error(`Erro: ${error.message}`),
+    onError: error => toast.error(`Erro: ${error.message}`),
   });
 
   const deleteAgentMutation = trpc.phase1.ghe.deleteExposureAgent.useMutation({
@@ -95,7 +137,7 @@ export default function GHEProfessional() {
       toast.success("Agente removido com sucesso");
       refetchAgents();
     },
-    onError: (error) => toast.error(`Erro ao remover: ${error.message}`),
+    onError: error => toast.error(`Erro ao remover: ${error.message}`),
   });
 
   // Validações
@@ -141,7 +183,7 @@ export default function GHEProfessional() {
       description: ghe.description,
       responsible: ghe.responsible || "",
       location: ghe.location || "",
-      status: "Ativo" || "Ativo",
+      status: ghe.status || "Ativo",
       createdDate: ghe.createdDate || new Date().toISOString().split("T")[0],
       notes: ghe.notes || "",
     });
@@ -177,7 +219,7 @@ export default function GHEProfessional() {
   };
 
   const confirmDeleteSelected = () => {
-    selectedGHEs.forEach((gheId) => {
+    selectedGHEs.forEach(gheId => {
       deleteGHEMutation.mutate({ gheId });
     });
   };
@@ -197,7 +239,9 @@ export default function GHEProfessional() {
       agentType: newAgentForm.agentType as any,
       agentName: newAgentForm.agentName,
       riskLevel: newAgentForm.riskLevel as any,
-      limiteTolerance: newAgentForm.limiteTolerance ? Number(newAgentForm.limiteTolerance) : undefined,
+      limiteTolerance: newAgentForm.limiteTolerance
+        ? Number(newAgentForm.limiteTolerance)
+        : undefined,
       unit: newAgentForm.unit,
     });
   };
@@ -235,12 +279,21 @@ export default function GHEProfessional() {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold">Gestão de GHE</h1>
-          <p className="text-gray-600">Grupos Homogêneos de Exposição (NR-07, NR-09) - Gerenciamento Profissional</p>
+          <p className="text-gray-600">
+            Grupos Homogêneos de Exposição (NR-07, NR-09) - Gerenciamento
+            Profissional
+          </p>
         </div>
         {selectedGHEs.size > 0 && (
           <div className="flex gap-2">
-            <Badge variant="secondary">{selectedGHEs.size} selecionado(s)</Badge>
-            <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+            <Badge variant="secondary">
+              {selectedGHEs.size} selecionado(s)
+            </Badge>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+            >
               <Trash2 className="mr-2 h-4 w-4" /> Excluir Selecionados
             </Button>
           </div>
@@ -257,10 +310,14 @@ export default function GHEProfessional() {
         {/* TAB: GHEs */}
         <TabsContent value="ghe" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Grupos Homogêneos de Exposição</h2>
+            <h2 className="text-xl font-semibold">
+              Grupos Homogêneos de Exposição
+            </h2>
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
-                <Button><Plus className="mr-2 h-4 w-4" /> Novo GHE</Button>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Novo GHE
+                </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
@@ -274,7 +331,12 @@ export default function GHEProfessional() {
                         id="code"
                         placeholder="GHE-001"
                         value={gheForm.code}
-                        onChange={(e) => setGheForm({ ...gheForm, code: e.target.value.toUpperCase() })}
+                        onChange={e =>
+                          setGheForm({
+                            ...gheForm,
+                            code: e.target.value.toUpperCase(),
+                          })
+                        }
                       />
                     </div>
                     <div>
@@ -283,7 +345,9 @@ export default function GHEProfessional() {
                         id="name"
                         placeholder="Setor de Soldagem"
                         value={gheForm.name}
-                        onChange={(e) => setGheForm({ ...gheForm, name: e.target.value })}
+                        onChange={e =>
+                          setGheForm({ ...gheForm, name: e.target.value })
+                        }
                       />
                     </div>
                   </div>
@@ -294,7 +358,9 @@ export default function GHEProfessional() {
                       id="location"
                       placeholder="Prédio A, Piso 2"
                       value={gheForm.location}
-                      onChange={(e) => setGheForm({ ...gheForm, location: e.target.value })}
+                      onChange={e =>
+                        setGheForm({ ...gheForm, location: e.target.value })
+                      }
                     />
                   </div>
 
@@ -304,7 +370,9 @@ export default function GHEProfessional() {
                       id="responsible"
                       placeholder="Nome do responsável"
                       value={gheForm.responsible}
-                      onChange={(e) => setGheForm({ ...gheForm, responsible: e.target.value })}
+                      onChange={e =>
+                        setGheForm({ ...gheForm, responsible: e.target.value })
+                      }
                     />
                   </div>
 
@@ -314,14 +382,21 @@ export default function GHEProfessional() {
                       id="description"
                       placeholder="Soldadores e auxiliares"
                       value={gheForm.description}
-                      onChange={(e) => setGheForm({ ...gheForm, description: e.target.value })}
+                      onChange={e =>
+                        setGheForm({ ...gheForm, description: e.target.value })
+                      }
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="status">Status</Label>
-                      <Select value={gheForm.status} onValueChange={(value) => setGheForm({ ...gheForm, status: value as any })}>
+                      <Select
+                        value={gheForm.status}
+                        onValueChange={value =>
+                          setGheForm({ ...gheForm, status: value as any })
+                        }
+                      >
                         <SelectTrigger id="status">
                           <SelectValue />
                         </SelectTrigger>
@@ -338,7 +413,12 @@ export default function GHEProfessional() {
                         id="date"
                         type="date"
                         value={gheForm.createdDate}
-                        onChange={(e) => setGheForm({ ...gheForm, createdDate: e.target.value })}
+                        onChange={e =>
+                          setGheForm({
+                            ...gheForm,
+                            createdDate: e.target.value,
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -349,11 +429,17 @@ export default function GHEProfessional() {
                       id="notes"
                       placeholder="Notas adicionais"
                       value={gheForm.notes}
-                      onChange={(e) => setGheForm({ ...gheForm, notes: e.target.value })}
+                      onChange={e =>
+                        setGheForm({ ...gheForm, notes: e.target.value })
+                      }
                     />
                   </div>
 
-                  <Button onClick={handleCreateGHE} disabled={createGHEMutation.isPending} className="w-full">
+                  <Button
+                    onClick={handleCreateGHE}
+                    disabled={createGHEMutation.isPending}
+                    className="w-full"
+                  >
                     {createGHEMutation.isPending ? "Criando..." : "Criar GHE"}
                   </Button>
                 </div>
@@ -362,7 +448,7 @@ export default function GHEProfessional() {
           </div>
 
           <div className="grid gap-4">
-            {gheList?.map((ghe) => (
+            {gheList?.map(ghe => (
               <Card
                 key={ghe.id}
                 className={`transition-all ${selectedGHE === ghe.id ? "border-blue-500 bg-blue-50" : ""} ${selectedGHEs.has(ghe.id) ? "border-orange-500 bg-orange-50" : ""}`}
@@ -374,10 +460,17 @@ export default function GHEProfessional() {
                       onCheckedChange={() => toggleGHESelection(ghe.id)}
                       className="mt-1"
                     />
-                    <div className="flex-1 cursor-pointer" onClick={() => setSelectedGHE(ghe.id)}>
+                    <div
+                      className="flex-1 cursor-pointer"
+                      onClick={() => setSelectedGHE(ghe.id)}
+                    >
                       <div className="flex items-center gap-2 mb-1">
                         <CardTitle>{ghe.name}</CardTitle>
-                        <Badge className={getStatusColor("Ativo" || "Ativo")}>{"Ativo" || "Ativo"}</Badge>
+                        <Badge
+                          className={getStatusColor(ghe.status || "Ativo")}
+                        >
+                          {ghe.status || "Ativo"}
+                        </Badge>
                       </div>
                       <CardDescription>{ghe.code}</CardDescription>
                     </div>
@@ -393,7 +486,11 @@ export default function GHEProfessional() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (confirm(`Tem certeza que deseja excluir o GHE ${ghe.code}?`)) {
+                          if (
+                            confirm(
+                              `Tem certeza que deseja excluir o GHE ${ghe.code}?`
+                            )
+                          ) {
                             deleteGHEMutation.mutate({ gheId: ghe.id });
                           }
                         }}
@@ -408,11 +505,11 @@ export default function GHEProfessional() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-600">Localização</p>
-                      <p className="font-medium">{"N/A" || "-"}</p>
+                      <p className="font-medium">{ghe.location || "—"}</p>
                     </div>
                     <div>
                       <p className="text-gray-600">Responsável</p>
-                      <p className="font-medium">{"Não atribuído" || "-"}</p>
+                      <p className="font-medium">{ghe.responsible || "—"}</p>
                     </div>
                     {ghe.description && (
                       <div className="col-span-2">
@@ -433,7 +530,9 @@ export default function GHEProfessional() {
             <Card className="bg-yellow-50 border-yellow-200">
               <CardContent className="pt-6 flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-yellow-600" />
-                <p className="text-yellow-800">Selecione um GHE para gerenciar seus agentes de exposição</p>
+                <p className="text-yellow-800">
+                  Selecione um GHE para gerenciar seus agentes de exposição
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -442,7 +541,9 @@ export default function GHEProfessional() {
                 <h2 className="text-xl font-semibold">Agentes de Exposição</h2>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button><Plus className="mr-2 h-4 w-4" /> Novo Agente</Button>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" /> Novo Agente
+                    </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
@@ -451,7 +552,15 @@ export default function GHEProfessional() {
                     <div className="space-y-4">
                       <div>
                         <Label>Tipo de Agente *</Label>
-                        <Select value={newAgentForm.agentType} onValueChange={(value) => setNewAgentForm({ ...newAgentForm, agentType: value })}>
+                        <Select
+                          value={newAgentForm.agentType}
+                          onValueChange={value =>
+                            setNewAgentForm({
+                              ...newAgentForm,
+                              agentType: value,
+                            })
+                          }
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -459,7 +568,9 @@ export default function GHEProfessional() {
                             <SelectItem value="Químico">Químico</SelectItem>
                             <SelectItem value="Físico">Físico</SelectItem>
                             <SelectItem value="Biológico">Biológico</SelectItem>
-                            <SelectItem value="Ergonômico">Ergonômico</SelectItem>
+                            <SelectItem value="Ergonômico">
+                              Ergonômico
+                            </SelectItem>
                             <SelectItem value="Acidente">Acidente</SelectItem>
                           </SelectContent>
                         </Select>
@@ -469,20 +580,37 @@ export default function GHEProfessional() {
                         <Input
                           placeholder="Ex: Benzeno, Ruído, Calor"
                           value={newAgentForm.agentName}
-                          onChange={(e) => setNewAgentForm({ ...newAgentForm, agentName: e.target.value })}
+                          onChange={e =>
+                            setNewAgentForm({
+                              ...newAgentForm,
+                              agentName: e.target.value,
+                            })
+                          }
                         />
                       </div>
                       <div>
                         <Label>Nível de Risco *</Label>
-                        <Select value={newAgentForm.riskLevel} onValueChange={(value) => setNewAgentForm({ ...newAgentForm, riskLevel: value })}>
+                        <Select
+                          value={newAgentForm.riskLevel}
+                          onValueChange={value =>
+                            setNewAgentForm({
+                              ...newAgentForm,
+                              riskLevel: value,
+                            })
+                          }
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Tolerável">Tolerável</SelectItem>
                             <SelectItem value="Moderado">Moderado</SelectItem>
-                            <SelectItem value="Substancial">Substancial</SelectItem>
-                            <SelectItem value="Intolerável">Intolerável</SelectItem>
+                            <SelectItem value="Substancial">
+                              Substancial
+                            </SelectItem>
+                            <SelectItem value="Intolerável">
+                              Intolerável
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -493,7 +621,12 @@ export default function GHEProfessional() {
                             type="number"
                             placeholder="50"
                             value={newAgentForm.limiteTolerance}
-                            onChange={(e) => setNewAgentForm({ ...newAgentForm, limiteTolerance: e.target.value })}
+                            onChange={e =>
+                              setNewAgentForm({
+                                ...newAgentForm,
+                                limiteTolerance: e.target.value,
+                              })
+                            }
                           />
                         </div>
                         <div>
@@ -501,7 +634,12 @@ export default function GHEProfessional() {
                           <Input
                             placeholder="ppm, mg/m³, dB"
                             value={newAgentForm.unit}
-                            onChange={(e) => setNewAgentForm({ ...newAgentForm, unit: e.target.value })}
+                            onChange={e =>
+                              setNewAgentForm({
+                                ...newAgentForm,
+                                unit: e.target.value,
+                              })
+                            }
                           />
                         </div>
                       </div>
@@ -510,11 +648,22 @@ export default function GHEProfessional() {
                         <Input
                           placeholder="Notas adicionais"
                           value={newAgentForm.notes}
-                          onChange={(e) => setNewAgentForm({ ...newAgentForm, notes: e.target.value })}
+                          onChange={e =>
+                            setNewAgentForm({
+                              ...newAgentForm,
+                              notes: e.target.value,
+                            })
+                          }
                         />
                       </div>
-                      <Button onClick={handleAddAgent} disabled={addAgentMutation.isPending} className="w-full">
-                        {addAgentMutation.isPending ? "Adicionando..." : "Adicionar Agente"}
+                      <Button
+                        onClick={handleAddAgent}
+                        disabled={addAgentMutation.isPending}
+                        className="w-full"
+                      >
+                        {addAgentMutation.isPending
+                          ? "Adicionando..."
+                          : "Adicionar Agente"}
                       </Button>
                     </div>
                   </DialogContent>
@@ -522,13 +671,15 @@ export default function GHEProfessional() {
               </div>
 
               <div className="grid gap-4">
-                {exposureAgents?.map((agent) => (
+                {exposureAgents?.map(agent => (
                   <Card key={agent.id}>
                     <CardContent className="pt-6">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <p className="font-semibold">{agent.agentName}</p>
-                          <p className="text-sm text-gray-600">{agent.agentType}</p>
+                          <p className="text-sm text-gray-600">
+                            {agent.agentType}
+                          </p>
                           {agent.limiteTolerance && (
                             <p className="text-sm text-gray-600 mt-2">
                               Limite: {agent.limiteTolerance} {agent.unit || ""}
@@ -536,13 +687,25 @@ export default function GHEProfessional() {
                           )}
                         </div>
                         <div className="flex gap-2 items-center">
-                          <Badge className={getRiskColor(agent.riskLevel || "Moderado")}>{agent.riskLevel}</Badge>
+                          <Badge
+                            className={getRiskColor(
+                              agent.riskLevel || "Moderado"
+                            )}
+                          >
+                            {agent.riskLevel}
+                          </Badge>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              if (confirm(`Tem certeza que deseja remover ${agent.agentName}?`)) {
-                                deleteAgentMutation.mutate({ agentId: agent.id });
+                              if (
+                                confirm(
+                                  `Tem certeza que deseja remover ${agent.agentName}?`
+                                )
+                              ) {
+                                deleteAgentMutation.mutate({
+                                  agentId: agent.id,
+                                });
                               }
                             }}
                             disabled={deleteAgentMutation.isPending}
@@ -565,7 +728,9 @@ export default function GHEProfessional() {
             <Card className="bg-yellow-50 border-yellow-200">
               <CardContent className="pt-6 flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-yellow-600" />
-                <p className="text-yellow-800">Selecione um GHE para ver os funcionários vinculados</p>
+                <p className="text-yellow-800">
+                  Selecione um GHE para ver os funcionários vinculados
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -578,17 +743,26 @@ export default function GHEProfessional() {
                 {employees?.length === 0 ? (
                   <Card className="bg-gray-50">
                     <CardContent className="pt-6">
-                      <p className="text-gray-600">Nenhum funcionário vinculado a este GHE</p>
+                      <p className="text-gray-600">
+                        Nenhum funcionário vinculado a este GHE
+                      </p>
                     </CardContent>
                   </Card>
                 ) : (
-                  employees?.map((emp) => (
+                  employees?.map(emp => (
                     <Card key={emp.id}>
                       <CardContent className="pt-6">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-semibold">{emp.employee?.name || "N/A"}</p>
-                            <p className="text-sm text-gray-600">Desde: {emp.startDate ? new Date(emp.startDate).toLocaleDateString("pt-BR") : "-"}</p>
+                            <p className="font-semibold">{emp.name || "N/A"}</p>
+                            <p className="text-sm text-gray-600">
+                              Desde:{" "}
+                              {emp.startDate
+                                ? new Date(emp.startDate).toLocaleDateString(
+                                    "pt-BR"
+                                  )
+                                : "-"}
+                            </p>
                           </div>
                           <Badge variant="outline">Vinculado</Badge>
                         </div>
@@ -613,10 +787,14 @@ export default function GHEProfessional() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-gray-700">
-              Tem certeza que deseja excluir {selectedGHEs.size} GHE(s)? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir {selectedGHEs.size} GHE(s)? Esta
+              ação não pode ser desfeita.
             </p>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
                 Cancelar
               </Button>
               <Button variant="destructive" onClick={confirmDeleteSelected}>

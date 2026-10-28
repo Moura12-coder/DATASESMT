@@ -1,10 +1,10 @@
+import { getGHEById, listGHEsFiltered } from "./gheUpdate";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import { getDb } from "./db";
 import { ghe } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import * as XLSX from "exceljs";
 // Note: docx import removed - use alternative PDF generation method if needed
-
-
 
 /**
  * Gerar relatório de GHE em PDF (usando docx que pode ser convertido para PDF)
@@ -13,16 +13,43 @@ import * as XLSX from "exceljs";
 export async function generateGHEReportPDF(gheId: number) {
   try {
     // Obter dados do GHE
-    const gheData = await (await getDb()).query.ghe.findFirst({
-      where: eq(ghe.id, gheId),
-    });
+    const gheData = await getGHEById(gheId);
 
     if (!gheData) {
       throw new Error(`GHE com ID ${gheId} não encontrado`);
     }
 
-    // Retornar buffer vazio por enquanto
-    return Buffer.from("PDF gerado com sucesso");
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    let page = pdf.addPage();
+    let y = 790;
+    const lines = [
+      "DataSESMT — Relatório de GHE",
+      gheData.code + " — " + gheData.name,
+      "Descrição: " + (gheData.description || "—"),
+      "Responsável: " + (gheData.responsible || "—"),
+      "Status: " + gheData.status,
+      "Agentes de exposição:",
+      ...gheData.exposureAgents.map(
+        agent => `${agent.agentType}: ${agent.agentName} — ${agent.riskLevel}`
+      ),
+      "Funcionários vinculados:",
+      ...gheData.employees.map(member => member.employee.name),
+    ];
+    for (const line of lines) {
+      for (let offset = 0; offset < Math.max(1, line.length); offset += 90) {
+        if (y < 50) {
+          page = pdf.addPage();
+          y = 790;
+        }
+        const text = line
+          .slice(offset, offset + 90)
+          .replace(/[^\x20-\x7e\xa0-\xff—]/g, "?");
+        page.drawText(text, { x: 40, y, size: 11, font });
+        y -= 18;
+      }
+    }
+    return Buffer.from(await pdf.save());
   } catch (error) {
     console.error("Erro ao gerar relatório PDF:", error);
     throw error;
@@ -35,9 +62,7 @@ export async function generateGHEReportPDF(gheId: number) {
 export async function generateGHEReportExcel(gheId: number) {
   try {
     // Obter dados do GHE
-    const gheData = await (await getDb()).query.ghe.findFirst({
-      where: eq(ghe.id, gheId),
-    });
+    const gheData = await getGHEById(gheId);
 
     if (!gheData) {
       throw new Error(`GHE com ID ${gheId} não encontrado`);
@@ -60,8 +85,14 @@ export async function generateGHEReportExcel(gheId: number) {
       { field: "Localização", value: gheData.location || "-" },
       { field: "Responsável", value: gheData.responsible || "-" },
       { field: "Status", value: gheData.status || "Ativo" },
-      { field: "Data de Criação", value: gheData.createdAt?.toLocaleDateString("pt-BR") || "-" },
-      { field: "Última Atualização", value: gheData.updatedAt?.toLocaleDateString("pt-BR") || "-" },
+      {
+        field: "Data de Criação",
+        value: gheData.createdAt?.toLocaleDateString("pt-BR") || "-",
+      },
+      {
+        field: "Última Atualização",
+        value: gheData.updatedAt?.toLocaleDateString("pt-BR") || "-",
+      },
       { field: "Observações", value: gheData.notes || "-" },
     ]);
 
@@ -88,7 +119,14 @@ export async function generateGHEReportExcel(gheId: number) {
         }))
       );
     } else {
-      agentsSheet.addRow({ id: "-", type: "-", name: "Nenhum agente cadastrado", riskLevel: "-", limit: "-", unit: "-" });
+      agentsSheet.addRow({
+        id: "-",
+        type: "-",
+        name: "Nenhum agente cadastrado",
+        riskLevel: "-",
+        limit: "-",
+        unit: "-",
+      });
     }
 
     // Aba 3: Funcionários
@@ -106,11 +144,18 @@ export async function generateGHEReportExcel(gheId: number) {
           id: emp.id,
           name: emp.employee?.name || "-",
           position: emp.employee?.position || "-",
-          startDate: emp.startDate ? new Date(emp.startDate).toLocaleDateString("pt-BR") : "-",
+          startDate: emp.startDate
+            ? new Date(emp.startDate).toLocaleDateString("pt-BR")
+            : "-",
         }))
       );
     } else {
-      employeesSheet.addRow({ id: "-", name: "Nenhum funcionário vinculado", position: "-", startDate: "-" });
+      employeesSheet.addRow({
+        id: "-",
+        name: "Nenhum funcionário vinculado",
+        position: "-",
+        startDate: "-",
+      });
     }
 
     // Aba 4: Resumo
@@ -121,15 +166,24 @@ export async function generateGHEReportExcel(gheId: number) {
     ];
 
     summarySheet.addRows([
-      { metric: "Total de Agentes", value: gheData.exposureAgents?.length || 0 },
-      { metric: "Total de Funcionários", value: gheData.employees?.length || 0 },
+      {
+        metric: "Total de Agentes",
+        value: gheData.exposureAgents?.length || 0,
+      },
+      {
+        metric: "Total de Funcionários",
+        value: gheData.employees?.length || 0,
+      },
       { metric: "Status", value: gheData.status || "Ativo" },
-      { metric: "Data de Geração", value: new Date().toLocaleDateString("pt-BR") },
+      {
+        metric: "Data de Geração",
+        value: new Date().toLocaleDateString("pt-BR"),
+      },
     ]);
 
     // Converter para buffer
     const buffer = await workbook.xlsx.writeBuffer();
-    return buffer as Buffer;
+    return Buffer.from(buffer as unknown as Uint8Array);
   } catch (error) {
     console.error("Erro ao gerar relatório Excel:", error);
     throw error;
@@ -142,9 +196,9 @@ export async function generateGHEReportExcel(gheId: number) {
 export async function generateAllGHEsReportExcel(unitId: number) {
   try {
     // Obter todos os GHEs
-    const gheList = await (await getDb()).query.ghe.findMany({
-      where: eq(ghe.unitId, unitId),
-    });
+    const gheList = await Promise.all(
+      (await listGHEsFiltered(unitId)).map(record => getGHEById(record.id))
+    );
 
     if (gheList.length === 0) {
       throw new Error("Nenhum GHE encontrado para esta unidade");
@@ -184,19 +238,28 @@ export async function generateAllGHEsReportExcel(unitId: number) {
       { header: "Valor", key: "value", width: 15 },
     ];
 
-    const totalAgents = gheList.reduce((sum, g: any) => sum + (g.exposureAgents?.length || 0), 0);
-    const totalEmployees = gheList.reduce((sum, g: any) => sum + (g.employees?.length || 0), 0);
+    const totalAgents = gheList.reduce(
+      (sum, g: any) => sum + (g.exposureAgents?.length || 0),
+      0
+    );
+    const totalEmployees = gheList.reduce(
+      (sum, g: any) => sum + (g.employees?.length || 0),
+      0
+    );
 
     summarySheet.addRows([
       { metric: "Total de GHEs", value: gheList.length },
       { metric: "Total de Agentes", value: totalAgents },
       { metric: "Total de Funcionários", value: totalEmployees },
-      { metric: "Data de Geração", value: new Date().toLocaleDateString("pt-BR") },
+      {
+        metric: "Data de Geração",
+        value: new Date().toLocaleDateString("pt-BR"),
+      },
     ]);
 
     // Converter para buffer
     const buffer = await workbook.xlsx.writeBuffer();
-    return buffer as Buffer;
+    return Buffer.from(buffer as unknown as Uint8Array);
   } catch (error) {
     console.error("Erro ao gerar relatório consolidado:", error);
     throw error;

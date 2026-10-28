@@ -6,13 +6,31 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import * as db from "../db";
+import { getDb } from "../db";
+import { sstDocuments } from "../../drizzle/schema";
+import { and, eq } from "drizzle-orm";
+async function database() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db;
+}
 
 // ─── VALIDATION SCHEMAS ──────────────────────────────────────────────────────
 
 const CreateSSTDocumentSchema = z.object({
   unitId: z.number().positive(),
-  type: z.enum(["PGR", "PCMSO", "LTCAT", "LTIP", "Ordem de Serviço", "Permissão de Trabalho", "APR", "ASO", "Ficha de Controle de EPI", "Avaliação Ergonômica Preliminar"]),
+  type: z.enum([
+    "PGR",
+    "PCMSO",
+    "LTCAT",
+    "LTIP",
+    "Ordem de Serviço",
+    "Permissão de Trabalho",
+    "APR",
+    "ASO",
+    "Ficha de Controle de EPI",
+    "Avaliação Ergonômica Preliminar",
+  ]),
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   content: z.string().optional(),
@@ -27,7 +45,16 @@ const UpdateSSTDocumentSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   content: z.string().optional(),
-  status: z.enum(["Rascunho", "Aguardando Aprovação", "Aprovado", "Vigente", "Expirado", "Cancelado"]).optional(),
+  status: z
+    .enum([
+      "Rascunho",
+      "Aguardando Aprovação",
+      "Aprovado",
+      "Vigente",
+      "Expirado",
+      "Cancelado",
+    ])
+    .optional(),
   validFrom: z.date().optional(),
   validUntil: z.date().optional(),
   metadata: z.any().optional(),
@@ -40,8 +67,30 @@ const GetSSTDocumentSchema = z.object({
 
 const ListSSTDocumentsSchema = z.object({
   unitId: z.number().positive(),
-  type: z.enum(["PGR", "PCMSO", "LTCAT", "LTIP", "Ordem de Serviço", "Permissão de Trabalho", "APR", "ASO", "Ficha de Controle de EPI", "Avaliação Ergonômica Preliminar"]).optional(),
-  status: z.enum(["Rascunho", "Aguardando Aprovação", "Aprovado", "Vigente", "Expirado", "Cancelado"]).optional(),
+  type: z
+    .enum([
+      "PGR",
+      "PCMSO",
+      "LTCAT",
+      "LTIP",
+      "Ordem de Serviço",
+      "Permissão de Trabalho",
+      "APR",
+      "ASO",
+      "Ficha de Controle de EPI",
+      "Avaliação Ergonômica Preliminar",
+    ])
+    .optional(),
+  status: z
+    .enum([
+      "Rascunho",
+      "Aguardando Aprovação",
+      "Aprovado",
+      "Vigente",
+      "Expirado",
+      "Cancelado",
+    ])
+    .optional(),
 });
 
 const DeleteSSTDocumentSchema = z.object({
@@ -72,9 +121,11 @@ export const sstDocumentsRouter = router({
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-        
-        const result = await db.createDocument(documentData as any);
-        const documentId = (result as any).insertId || (result as any).id || 1;
+
+        const result = await (await database())
+          .insert(sstDocuments)
+          .values(documentData);
+        const documentId = result[0].insertId;
 
         return {
           documentId,
@@ -94,8 +145,11 @@ export const sstDocumentsRouter = router({
     .input(GetSSTDocumentSchema)
     .query(async ({ input }) => {
       try {
-        const documents = await db.getDocuments();
-        const document = documents.find(d => d.id === input.documentId);
+        const [document] = await (await database())
+          .select()
+          .from(sstDocuments)
+          .where(eq(sstDocuments.id, input.documentId))
+          .limit(1);
         if (!document) {
           throw new TRPCError({
             code: "NOT_FOUND",
@@ -117,7 +171,16 @@ export const sstDocumentsRouter = router({
     .input(ListSSTDocumentsSchema)
     .query(async ({ input }) => {
       try {
-        const documents = await db.getDocuments(input.unitId, input.type as any);
+        const conditions = [eq(sstDocuments.unitId, input.unitId)];
+        if (input.type) conditions.push(eq(sstDocuments.type, input.type));
+        if (input.status)
+          conditions.push(eq(sstDocuments.status, input.status));
+        const documents = await (
+          await database()
+        )
+          .select()
+          .from(sstDocuments)
+          .where(and(...conditions));
         return documents || [];
       } catch (error) {
         console.error("Error listing documents:", error);
@@ -133,18 +196,28 @@ export const sstDocumentsRouter = router({
     .input(UpdateSSTDocumentSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        await db.updateDocument(input.documentId, {
-          title: input.title,
-          description: input.description,
-          content: input.content,
-          status: input.status,
-          validFrom: input.validFrom,
-          validUntil: input.validUntil,
-          metadata: input.metadata,
-          tags: input.tags,
-          updatedBy: ctx.user?.id,
-          updatedAt: new Date(),
-        } as any);
+        const [result] = await (
+          await database()
+        )
+          .update(sstDocuments)
+          .set({
+            title: input.title,
+            description: input.description,
+            content: input.content,
+            status: input.status,
+            validFrom: input.validFrom,
+            validUntil: input.validUntil,
+            metadata: input.metadata,
+            tags: input.tags,
+            updatedBy: ctx.user?.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(sstDocuments.id, input.documentId));
+        if (!result.affectedRows)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Documento não encontrado",
+          });
 
         return {
           documentId: input.documentId,
@@ -164,7 +237,10 @@ export const sstDocumentsRouter = router({
     .input(DeleteSSTDocumentSchema)
     .mutation(async ({ input }) => {
       try {
-        await db.deleteDocument(input.documentId);
+        await (await database())
+          .update(sstDocuments)
+          .set({ status: "Cancelado" })
+          .where(eq(sstDocuments.id, input.documentId));
         return { message: "Documento deletado com sucesso" };
       } catch (error) {
         console.error("Error deleting document:", error);
@@ -176,14 +252,15 @@ export const sstDocumentsRouter = router({
     }),
 
   // Get pending approvals
-  getPendingApprovals: protectedProcedure
-    .query(async () => {
-      try {
-        const documents = await db.getDocuments();
-        return documents.filter(d => d.status === "Aguardando Aprovação") || [];
-      } catch (error) {
-        console.error("Error getting pending approvals:", error);
-        return [];
-      }
-    }),
+  getPendingApprovals: protectedProcedure.query(async () => {
+    try {
+      return (await database())
+        .select()
+        .from(sstDocuments)
+        .where(eq(sstDocuments.status, "Aguardando Aprovação"));
+    } catch (error) {
+      console.error("Error getting pending approvals:", error);
+      return [];
+    }
+  }),
 });
